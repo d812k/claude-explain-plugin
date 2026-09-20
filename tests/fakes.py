@@ -1,7 +1,9 @@
-"""In-memory fakes implementing the service protocols. No mocks of internals."""
+"""In-memory fakes implementing the service and adapter protocols. No mocks of internals."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
+from explain_selection.adapters import CommandResult
 from explain_selection.domain import (
     Focus,
     LiveSession,
@@ -132,3 +134,32 @@ class FakeTempFiles:
     def write(self, text: str) -> str:
         self.written.append(text)
         return self.path
+
+
+@dataclass(slots=True)
+class FakeRunner:
+    """A command runner that replays a queue of results and records every call."""
+
+    queue: list[CommandResult] = field(default_factory=list[CommandResult])
+    calls: list[tuple[str, ...]] = field(default_factory=list[tuple[str, ...]])
+
+    def run(
+        self, args: Sequence[str], *, timeout: float, stdin: str | None = None
+    ) -> CommandResult:
+        self.calls.append(tuple(args))
+        if self.queue:
+            return self.queue.pop(0)
+        return CommandResult(returncode=0, stdout="", stderr="")
+
+
+@dataclass(slots=True)
+class FakeConnector:
+    """A Unix-socket connector fake: sends unless the path is marked to fail."""
+
+    fail_paths: set[str] = field(default_factory=set[str])
+    sent: list[tuple[str, bytes]] = field(default_factory=list[tuple[str, bytes]])
+
+    def send(self, path: str, payload: bytes, *, timeout: float) -> None:
+        if path in self.fail_paths:
+            raise OSError(f"connection refused: {path}")
+        self.sent.append((path, payload))
