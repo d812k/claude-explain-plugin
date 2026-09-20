@@ -12,7 +12,7 @@ from explain_selection.domain import (
     RememberedTarget,
     Target,
 )
-from explain_selection.errors import InboxUnavailableError
+from explain_selection.errors import InboxUnavailableError, SubprocessError
 from explain_selection.services import InboxAddress
 
 
@@ -85,6 +85,21 @@ class FakeFocus:
 
     def probe(self) -> Focus:
         return self.focus
+
+
+@dataclass(slots=True)
+class FakePanes:
+    """A tmux pane lookup returning a fixed pane; records the ttys it was asked about."""
+
+    pane: str | None = None
+    fail: bool = False
+    seen: list[str] = field(default_factory=list[str])
+
+    def active_pane_for_tty(self, tty: str) -> str | None:
+        self.seen.append(tty)
+        if self.fail:
+            raise SubprocessError("could not run tmux")
+        return self.pane
 
 
 @dataclass(slots=True)
