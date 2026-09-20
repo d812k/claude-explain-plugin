@@ -46,6 +46,7 @@ from explain_selection.services.send import (
     Unavailable,
     send_message,
 )
+from explain_selection.services.sessions import SessionSummary, list_sessions
 
 __all__ = [
     "MODE_A_SKILL",
@@ -76,6 +77,7 @@ __all__ = [
     "SendResult",
     "Sent",
     "SessionLister",
+    "SessionSummary",
     "Skipped",
     "TargetMemory",
     "TempFileWriter",
@@ -83,6 +85,7 @@ __all__ = [
     "Unavailable",
     "UnregisterResult",
     "deliver_selection",
+    "list_sessions",
     "register_session",
     "send_message",
     "unregister_session",
