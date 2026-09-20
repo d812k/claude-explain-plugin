@@ -12,11 +12,13 @@ WRAPPERS = (
     "explain-selection-register",
     "explain-selection-unregister",
     "explain-selection-capture",
+    "explain-selection",
 )
+CLI_WRAPPER = "explain-selection"
 
 
 def _entrypoint(name: str) -> str:
-    return name.removeprefix("explain-selection-")
+    return "cli" if name == CLI_WRAPPER else name.removeprefix("explain-selection-")
 
 
 @pytest.mark.parametrize("name", WRAPPERS)
@@ -54,6 +56,15 @@ def test_wrapper_has_no_bashisms(name: str) -> None:
 def test_capture_wrapper_notifies_when_no_interpreter_is_found() -> None:
     text = (BIN / "explain-selection-capture").read_text(encoding="utf-8")
     assert "osascript -e 'display notification" in text
+
+
+def test_cli_wrapper_reports_a_missing_interpreter_on_stderr_and_exits_one() -> None:
+    text = (BIN / CLI_WRAPPER).read_text(encoding="utf-8")
+    assert "No Python interpreter found" in text
+    assert ">&2" in text
+    assert "exit 1" in text
+    assert "osascript" not in text
+    assert "exit 0" not in text
 
 
 @pytest.mark.slow

@@ -1,0 +1,21 @@
+#!/bin/sh
+# Command line: explain-selection version | sessions | send --pid <int> [--text -|<string>]
+# Finds the interpreter prepared by the install skill and execs the Python entrypoint.
+# Without an interpreter it prints one line to stderr and exits 1: unlike the hook
+# wrappers, which must stay silent and succeed, a command run by hand can afford to complain.
+set -u
+here=$(cd "$(dirname "$0")" && pwd -P) || exit 1
+root=$(dirname "$here")
+if [ -n "${EXPLAIN_SELECTION_PYTHON:-}" ] && [ -x "$EXPLAIN_SELECTION_PYTHON" ]; then
+  py=$EXPLAIN_SELECTION_PYTHON
+elif [ -x "${HOME:-}/.claude/explain-selection/venv/bin/python" ]; then
+  py="$HOME/.claude/explain-selection/venv/bin/python"
+elif [ -x "$root/.venv/bin/python" ]; then
+  py="$root/.venv/bin/python"
+else
+  echo "explain-selection: No Python interpreter found. Run the explain-selection install skill." >&2
+  exit 1
+fi
+EXPLAIN_SELECTION_PLUGIN_ROOT=$root
+export EXPLAIN_SELECTION_PLUGIN_ROOT
+exec "$py" -m explain_selection.entrypoints.cli "$@"
