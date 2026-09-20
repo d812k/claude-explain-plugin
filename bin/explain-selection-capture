@@ -1,0 +1,23 @@
+#!/bin/sh
+# Hotkey entrypoint: deliver the selected text to a running Claude Code session.
+# Usage: explain-selection-capture [--text -|<string>]   (no arguments: read stdin)
+# Finds the interpreter prepared by the install skill and execs the Python entrypoint.
+# Without an interpreter it shows a notification when osascript exists, then exits 0.
+set -u
+here=$(cd "$(dirname "$0")" && pwd -P) || exit 0
+root=$(dirname "$here")
+if [ -n "${EXPLAIN_SELECTION_PYTHON:-}" ] && [ -x "$EXPLAIN_SELECTION_PYTHON" ]; then
+  py=$EXPLAIN_SELECTION_PYTHON
+elif [ -x "${HOME:-}/.claude/explain-selection/venv/bin/python" ]; then
+  py="$HOME/.claude/explain-selection/venv/bin/python"
+elif [ -x "$root/.venv/bin/python" ]; then
+  py="$root/.venv/bin/python"
+else
+  if command -v osascript >/dev/null 2>&1; then
+    osascript -e 'display notification "No Python interpreter found. Run the explain-selection install skill." with title "Explain selection"' >/dev/null 2>&1
+  fi
+  exit 0
+fi
+EXPLAIN_SELECTION_PLUGIN_ROOT=$root
+export EXPLAIN_SELECTION_PLUGIN_ROOT
+exec "$py" -m explain_selection.entrypoints.capture "$@"
