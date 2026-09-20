@@ -23,7 +23,6 @@ from explain_selection.domain import (
     build_deep_link,
     clean_selection,
     fit_prompt_for_deep_link,
-    join_targets,
     render_prompt,
     select_target,
 )
@@ -31,7 +30,6 @@ from explain_selection.services.protocols import (
     Chooser,
     Clock,
     FocusProbe,
-    InboxAddress,
     InboxPoster,
     LinkOpener,
     ProcessProbe,
@@ -40,6 +38,7 @@ from explain_selection.services.protocols import (
     TargetMemory,
     TempFileWriter,
 )
+from explain_selection.services.targets import address_for, live_targets
 
 MODE_A_SKILL: Final[str] = "/explain-selection:explain"
 
@@ -128,16 +127,7 @@ def deliver_selection(raw: str, policy: DeliveryPolicy, deps: DeliverDeps) -> Ou
     if not selection.text:
         return NothingToSend()
 
-    sessions = deps.sessions.list_interactive()
-    entries = deps.registry.read_all()
-    # An entry whose pid ``claude agents`` does not list may still belong to a session the
-    # CLI failed to report; only a pid the kernel no longer knows is safe to prune.
-    live_pids = {s.pid for s in sessions}
-    for entry in entries:
-        if entry.pid not in live_pids and not deps.probe.is_alive(entry.pid):
-            deps.registry.delete(entry.pid)
-
-    targets = join_targets(sessions, entries)
+    targets = live_targets(deps.sessions, deps.registry, deps.probe)
     # The ladder only consults focus and memory with two or more candidates; skipping the
     # probes otherwise saves an osascript run (and its Automation prompt) and tmux calls.
     ambiguous = len(targets) > 1
@@ -177,14 +167,7 @@ def _injected(target: Target, reason: PickReason, selection: Selection) -> Injec
 def _inject(
     target: Target, selection: Selection, policy: DeliveryPolicy, deps: DeliverDeps
 ) -> None:
-    message = render_prompt(policy.prompt_template, selection)
-    entry = target.entry
-    address = InboxAddress(
-        pid=target.session.pid,
-        socket_path=entry.socket if entry is not None else None,
-        token=entry.token if entry is not None else None,
-    )
-    deps.poster.post(address, message)
+    deps.poster.post(address_for(target), render_prompt(policy.prompt_template, selection))
 
 
 def _open_new_window(

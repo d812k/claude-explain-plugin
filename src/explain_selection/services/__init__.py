@@ -38,6 +38,14 @@ from explain_selection.services.register import (
     register_session,
     unregister_session,
 )
+from explain_selection.services.send import (
+    NoSuchSession,
+    SendDeps,
+    SendResult,
+    Sent,
+    Unavailable,
+    send_message,
+)
 
 __all__ = [
     "MODE_A_SKILL",
@@ -53,6 +61,7 @@ __all__ = [
     "Injected",
     "LinkOpener",
     "LongSelection",
+    "NoSuchSession",
     "NothingToSend",
     "Notifier",
     "OpenedNewWindow",
@@ -63,13 +72,18 @@ __all__ = [
     "Registered",
     "RegistryStore",
     "Removed",
+    "SendDeps",
+    "SendResult",
+    "Sent",
     "SessionLister",
     "Skipped",
     "TargetMemory",
     "TempFileWriter",
     "TtyLookup",
+    "Unavailable",
     "UnregisterResult",
     "deliver_selection",
     "register_session",
+    "send_message",
     "unregister_session",
 ]
