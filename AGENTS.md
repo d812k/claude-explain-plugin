@@ -31,6 +31,7 @@ verification you did not perform.
 - `make prop` — property tests with the larger Hypothesis profile.
 - `make test-all` — everything, including `slow` and `integration`. Run before a PR.
 - `make layers` — `lint-imports`; enforces the module layering in section 4.
+- `make validate` — `claude plugin validate . --strict`; needs the `claude` binary, so it runs in `make test-all`, not in `make check`.
 
 Everything runs through `uv run`. Never install packages globally. If a command in this
 list is missing or wrong, fix the `Makefile` in the same change.
@@ -144,18 +145,20 @@ list is missing or wrong, fix the `Makefile` in the same change.
 
 ## 10. Repo map
 
-    .claude-plugin/plugin.json      plugin manifest
-    hooks/hooks.json                SessionStart, CwdChanged, SessionEnd → entrypoints
+    .claude-plugin/plugin.json      plugin manifest; version equals pyproject.toml
+    hooks/hooks.json                SessionStart, CwdChanged, SessionEnd → bin/ wrappers
     skills/                         explain, install, doctor, send (SKILL.md each)
-    bin/                            thin shell wrappers that exec the Python entrypoints
+    bin/                            POSIX sh wrappers: explain-selection-{register,unregister,capture}
+    templates/explain-prompt.txt    the mode B prompt; {text} is replaced by the selection
+    docs/proposals/                 accepted decisions; 0001 covers runtime, wrappers, registry
     src/explain_selection/
       domain/                       pure logic, frozen dataclasses, no I/O
       services/                     use-cases composing domain + adapter protocols
       adapters/                     socket client, subprocess runners, registry files, tmux
-      entrypoints/                  hook and CLI commands; main() builds Settings and Deps
+      entrypoints/                  register, unregister, capture, cli; settings.py, deps.py
       errors.py                     typed exceptions
     tests/
-      unit/  prop/  integration/  conftest.py
+      unit/  prop/  integration/  conftest.py  fakes.py  builders.py
     Makefile  pyproject.toml  uv.lock  .python-version  AGENTS.md  CLAUDE.md
     explain-selection-plugin-plan.md   the design; route B is decided
 
