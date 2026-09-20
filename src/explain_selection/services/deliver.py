@@ -34,6 +34,7 @@ from explain_selection.services.protocols import (
     InboxAddress,
     InboxPoster,
     LinkOpener,
+    ProcessProbe,
     RegistryStore,
     SessionLister,
     TargetMemory,
@@ -74,6 +75,7 @@ class DeliverDeps:
     chooser: Chooser
     opener: LinkOpener
     tempfiles: TempFileWriter
+    probe: ProcessProbe
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,9 +130,11 @@ def deliver_selection(raw: str, policy: DeliveryPolicy, deps: DeliverDeps) -> Ou
 
     sessions = deps.sessions.list_interactive()
     entries = deps.registry.read_all()
+    # An entry whose pid ``claude agents`` does not list may still belong to a session the
+    # CLI failed to report; only a pid the kernel no longer knows is safe to prune.
     live_pids = {s.pid for s in sessions}
     for entry in entries:
-        if entry.pid not in live_pids:
+        if entry.pid not in live_pids and not deps.probe.is_alive(entry.pid):
             deps.registry.delete(entry.pid)
 
     targets = join_targets(sessions, entries)

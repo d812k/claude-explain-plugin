@@ -132,6 +132,14 @@ class Notifier(Protocol):
         ...
 
 
+class ProcessProbe(Protocol):
+    """Answers whether a process still exists on this machine."""
+
+    def is_alive(self, pid: Pid) -> bool:
+        """``True`` when ``pid`` is running, including when it belongs to another user."""
+        ...
+
+
 __all__ = [
     "Chooser",
     "Clock",
@@ -140,6 +148,7 @@ __all__ = [
     "InboxPoster",
     "LinkOpener",
     "Notifier",
+    "ProcessProbe",
     "RegistryStore",
     "SessionLister",
     "TargetMemory",

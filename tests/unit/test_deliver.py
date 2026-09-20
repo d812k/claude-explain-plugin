@@ -33,6 +33,7 @@ from tests.fakes import (
     FakeMemory,
     FakeOpener,
     FakePoster,
+    FakeProbe,
     FakeRegistry,
     FakeRunner,
     FakeSessions,
@@ -69,6 +70,7 @@ def _deps() -> DeliverDeps:
         chooser=FakeChooser(),
         opener=FakeOpener(),
         tempfiles=FakeTempFiles(),
+        probe=FakeProbe(),
     )
 
 
@@ -270,6 +272,15 @@ def test_stale_registry_entries_are_pruned_against_live_sessions() -> None:
     deliver_selection("x", _policy(), deps)
     assert Pid(999) in registry.deleted
     assert Pid(10) not in registry.deleted
+
+
+def test_an_unlisted_but_alive_pid_keeps_its_entry_while_a_dead_one_is_pruned() -> None:
+    registry = FakeRegistry(entries={Pid(10): entry(10), Pid(20): entry(20), Pid(999): entry(999)})
+    probe = FakeProbe(alive={Pid(20)})
+    deps = replace(_deps(), sessions=FakeSessions((session(10),)), registry=registry, probe=probe)
+    deliver_selection("x", _policy(), deps)
+    assert registry.deleted == [Pid(999)]
+    assert sorted(probe.asked) == [Pid(20), Pid(999)]
 
 
 def test_mode_a_prompt_uses_the_explain_skill_not_the_template() -> None:

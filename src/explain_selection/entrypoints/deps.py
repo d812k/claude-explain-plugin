@@ -17,6 +17,7 @@ from explain_selection.adapters import (
     OpenLinkOpener,
     OsascriptChooser,
     OsascriptFocus,
+    OsProcessProbe,
     PsTtyLookup,
     RegistryFiles,
     SystemClock,
@@ -67,6 +68,7 @@ def build_deliver_deps(
         chooser=OsascriptChooser(runner),
         opener=OpenLinkOpener(runner),
         tempfiles=TempFiles(settings.temp_dir),
+        probe=OsProcessProbe(),
     )
 
 

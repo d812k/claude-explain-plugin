@@ -55,6 +55,18 @@ class FakeRegistry:
 
 
 @dataclass(slots=True)
+class FakeProbe:
+    """Reports the pids in ``alive`` as running; records every pid it was asked about."""
+
+    alive: set[Pid] = field(default_factory=set[Pid])
+    asked: list[Pid] = field(default_factory=list[Pid])
+
+    def is_alive(self, pid: Pid) -> bool:
+        self.asked.append(pid)
+        return pid in self.alive
+
+
+@dataclass(slots=True)
 class FakeTtyLookup:
     """Maps pid to tty from a fixed table."""
 

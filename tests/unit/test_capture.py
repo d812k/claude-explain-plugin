@@ -22,6 +22,7 @@ from tests.fakes import (
     FakeNotifier,
     FakeOpener,
     FakePoster,
+    FakeProbe,
     FakeRegistry,
     FakeSessions,
     FakeTempFiles,
@@ -56,6 +57,7 @@ def _deps(
         chooser=FakeChooser(),
         opener=opener,
         tempfiles=FakeTempFiles(),
+        probe=FakeProbe(),
     )
     return deps, poster, opener
 
