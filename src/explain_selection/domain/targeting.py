@@ -45,13 +45,15 @@ class RememberedTarget:
 
 
 class PickReason(Enum):
-    """Why a single target was selected without asking."""
+    """How a single target came to be selected. ``CHOSEN`` is set by the caller after a
+    ``Choose`` decision; ``select_target`` never returns it itself."""
 
     ONLY_SESSION = "only_session"
     TMUX_PANE = "tmux_pane"
     TERMINAL_TTY = "terminal_tty"
     REMEMBERED = "remembered"
     ONLY_IDLE = "only_idle"
+    CHOSEN = "chosen"
 
 
 @dataclass(frozen=True, slots=True)

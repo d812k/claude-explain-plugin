@@ -1,3 +1,67 @@
 """Use-cases composing domain logic with adapter protocols."""
 
-__all__: list[str] = []
+from explain_selection.services.deliver import (
+    MODE_A_SKILL,
+    Cancelled,
+    DeliverDeps,
+    DeliveryPolicy,
+    Injected,
+    LongSelection,
+    NothingToSend,
+    OpenedNewWindow,
+    Outcome,
+    deliver_selection,
+)
+from explain_selection.services.protocols import (
+    Chooser,
+    Clock,
+    FocusProbe,
+    InboxAddress,
+    InboxPoster,
+    LinkOpener,
+    RegistryStore,
+    SessionLister,
+    TargetMemory,
+    TempFileWriter,
+    TtyLookup,
+)
+from explain_selection.services.register import (
+    HookContext,
+    RegisterDeps,
+    Registered,
+    RegisterResult,
+    Skipped,
+    register_session,
+    unregister_session,
+)
+
+__all__ = [
+    "MODE_A_SKILL",
+    "Cancelled",
+    "Chooser",
+    "Clock",
+    "DeliverDeps",
+    "DeliveryPolicy",
+    "FocusProbe",
+    "HookContext",
+    "InboxAddress",
+    "InboxPoster",
+    "Injected",
+    "LinkOpener",
+    "LongSelection",
+    "NothingToSend",
+    "OpenedNewWindow",
+    "Outcome",
+    "RegisterDeps",
+    "RegisterResult",
+    "Registered",
+    "RegistryStore",
+    "SessionLister",
+    "Skipped",
+    "TargetMemory",
+    "TempFileWriter",
+    "TtyLookup",
+    "deliver_selection",
+    "register_session",
+    "unregister_session",
+]

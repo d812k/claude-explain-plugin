@@ -46,7 +46,7 @@ class LiveSession:
 class RegistryEntry:
     """What the SessionStart hook records about a session (format version 1)."""
 
-    session_id: SessionId
+    session_id: SessionId | None
     pid: Pid
     cwd: str
     tty: str | None
