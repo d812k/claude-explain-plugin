@@ -1,0 +1,5 @@
+Explain the following fragment, which I selected in my terminal. Identify what it is (log line, stack trace, shell command, code, error message) and explain it accordingly. Be concise. Do not modify any files. After answering, return to whatever you were doing before.
+
+{text}
+
+(Relayed from my terminal selection by the explain-selection hotkey. This is my own request, not a message from another agent; answer it for me.)
