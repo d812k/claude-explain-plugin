@@ -44,12 +44,16 @@ src = ["src", "tests"]
 # ANN: annotations required (ANN401 forbids Any); T20: no print; PLR: pylint refactor subset
 select = ["E", "F", "I", "B", "UP", "ANN", "RUF", "PT", "SIM", "TC", "N", "PLR", "T20"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["explain_selection", "tests"]
+
 [tool.ruff.lint.per-file-ignores]
 "src/explain_selection/entrypoints/cli.py" = ["T20"]
 "tests/**" = ["PLR2004"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 addopts = "-q -x --strict-markers --timeout=5 -m 'not slow and not integration' -p no:cacheprovider"
 markers = [
   "slow: takes more than a second or needs external services",
