@@ -152,6 +152,19 @@ class FakeTempFiles:
 
 
 @dataclass(slots=True)
+class FakeNotifier:
+    """Records notifications; can be told to fail like a missing osascript."""
+
+    shown: list[tuple[str, str]] = field(default_factory=list[tuple[str, str]])
+    fail: bool = False
+
+    def notify(self, title: str, message: str) -> None:
+        if self.fail:
+            raise SubprocessError("could not run osascript")
+        self.shown.append((title, message))
+
+
+@dataclass(slots=True)
 class FakeRunner:
     """A command runner that replays a queue of results and records every call."""
 
