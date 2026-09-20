@@ -41,6 +41,9 @@ class SubprocessRunner:
         self, args: Sequence[str], *, timeout: float, stdin: str | None = None
     ) -> CommandResult:
         argv = list(args)
+        # Error messages name only the executable: the argument list may carry the selection
+        # (deep link, notification text) and the messages end up in the log.
+        name = argv[0] if argv else "?"
         try:
             completed = subprocess.run(
                 argv,
@@ -50,9 +53,12 @@ class SubprocessRunner:
                 input=stdin,
                 check=False,
             )
+        except subprocess.TimeoutExpired as exc:
+            raise SubprocessError(f"{name} timed out after {timeout:g} s") from exc
+        except FileNotFoundError as exc:
+            raise SubprocessError(f"{name} not found") from exc
         except (OSError, subprocess.SubprocessError) as exc:
-            name = argv[0] if argv else "?"
-            raise SubprocessError(f"could not run {name}: {exc}") from exc
+            raise SubprocessError(f"could not run {name}: {type(exc).__name__}") from exc
         return CommandResult(
             returncode=completed.returncode,
             stdout=completed.stdout,

@@ -128,14 +128,14 @@ def run(
 
 def main() -> int:
     """Entry for ``python -m explain_selection.entrypoints.capture``."""
-    from explain_selection.adapters import OsascriptNotifier, SubprocessRunner
-
-    runner = SubprocessRunner()
-    notifier = OsascriptNotifier(runner)
+    notifier: Notifier | None = None
     try:
+        from explain_selection.adapters import OsascriptNotifier, SubprocessRunner
         from explain_selection.entrypoints.deps import build_deliver_deps, current_process
         from explain_selection.entrypoints.settings import load_settings, resolve_plugin_root
 
+        runner = SubprocessRunner()
+        notifier = OsascriptNotifier(runner)
         environ = dict(os.environ)
         settings = load_settings(environ, resolve_plugin_root(environ, checkout_root()))
         configure_logging(settings.log_file, entrypoint_logger())
@@ -144,7 +144,8 @@ def main() -> int:
         return run(sys.argv[1:], read_stdin, policy, deps, notifier)
     except Exception:
         logger.exception("capture could not start")
-        _notify(notifier, "Explain selection could not start; see the log.")
+        if notifier is not None:
+            _notify(notifier, "Explain selection could not start; see the log.")
         return 0
 
 
