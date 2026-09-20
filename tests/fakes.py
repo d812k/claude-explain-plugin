@@ -79,11 +79,13 @@ class FakePoster:
 
 @dataclass(slots=True)
 class FakeFocus:
-    """Returns a fixed focus signal."""
+    """Returns a fixed focus signal; counts how often it was probed."""
 
     focus: Focus = field(default_factory=lambda: Focus(terminal_tty=None, tmux_pane=None))
+    probes: int = 0
 
     def probe(self) -> Focus:
+        self.probes += 1
         return self.focus
 
 
@@ -120,8 +122,10 @@ class FakeMemory:
 
     remembered: RememberedTarget | None = None
     saved: list[RememberedTarget] = field(default_factory=list[RememberedTarget])
+    loads: int = 0
 
     def load(self) -> RememberedTarget | None:
+        self.loads += 1
         return self.remembered
 
     def save(self, remembered: RememberedTarget) -> None:

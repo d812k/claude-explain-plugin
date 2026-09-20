@@ -13,6 +13,7 @@ from typing import assert_never
 from explain_selection.domain import (
     DEEP_LINK_QUERY_LIMIT,
     Choose,
+    Focus,
     Inject,
     OpenNewWindow,
     PickReason,
@@ -120,12 +121,13 @@ def deliver_selection(raw: str, policy: DeliveryPolicy, deps: DeliverDeps) -> Ou
             deps.registry.delete(entry.pid)
 
     targets = join_targets(sessions, entries)
+    # The ladder only consults focus and memory with two or more candidates; skipping the
+    # probes otherwise saves an osascript run (and its Automation prompt) and tmux calls.
+    ambiguous = len(targets) > 1
+    focus = deps.focus.probe() if ambiguous else Focus(terminal_tty=None, tmux_pane=None)
+    remembered = deps.memory.load() if ambiguous else None
     decision = select_target(
-        targets,
-        deps.focus.probe(),
-        deps.memory.load(),
-        deps.clock.now_ms(),
-        policy.remember_ttl_ms,
+        targets, focus, remembered, deps.clock.now_ms(), policy.remember_ttl_ms
     )
 
     match decision:

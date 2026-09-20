@@ -2,8 +2,17 @@
 
 from dataclasses import replace
 
+import pytest
+
 from explain_selection.adapters import CommandResult, OsascriptFocus
-from explain_selection.domain import Focus, PickReason, Pid, RememberedTarget, join_targets
+from explain_selection.domain import (
+    Focus,
+    LiveSession,
+    PickReason,
+    Pid,
+    RememberedTarget,
+    join_targets,
+)
 from explain_selection.services import (
     Cancelled,
     DeliverDeps,
@@ -161,6 +170,33 @@ def test_device_path_from_the_terminal_matches_the_registry_tty_name() -> None:
     assert isinstance(result, Injected)
     assert result.target.session.pid == 10
     assert result.reason is PickReason.TERMINAL_TTY
+
+
+@pytest.mark.parametrize("live", [(), (session(10),)], ids=["none", "single"])
+def test_unambiguous_cases_skip_the_focus_probe_and_the_memory(
+    live: tuple[LiveSession, ...],
+) -> None:
+    focus = FakeFocus()
+    memory = FakeMemory()
+    deps = replace(_deps(), sessions=FakeSessions(live), focus=focus, memory=memory)
+    deliver_selection("x", _policy(), deps)
+    assert focus.probes == 0
+    assert memory.loads == 0
+
+
+def test_two_sessions_probe_the_focus_and_memory_once() -> None:
+    focus = FakeFocus()
+    memory = FakeMemory()
+    deps = replace(
+        _deps(),
+        sessions=FakeSessions((session(10, name="a"), session(20, name="b"))),
+        focus=focus,
+        memory=memory,
+        chooser=FakeChooser(choice=None),
+    )
+    deliver_selection("x", _policy(), deps)
+    assert focus.probes == 1
+    assert memory.loads == 1
 
 
 def test_ambiguous_selection_asks_and_remembers_the_pick() -> None:
