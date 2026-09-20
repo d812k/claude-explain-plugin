@@ -89,8 +89,10 @@ def test_logs_describe_the_outcome_without_the_token(caplog: pytest.LogCaptureFi
     with caplog.at_level(logging.INFO, logger="explain_selection"):
         register.run(STDIN, ENVIRON, _deps(FakeRegistry()))
         register.run(STDIN, {}, _deps(FakeRegistry()))
+        unregister.run(STDIN, ENVIRON, _deps(FakeRegistry(entries={Pid(4242): entry(4242)})))
     assert "register: registered pid 4242 cwd=/work/repo tty=ttys004 pane=%3" in caplog.text
     assert "register: skipped: no messaging socket in environment" in caplog.text
+    assert "unregister: removed pid 4242" in caplog.text
     assert str(FAKE_TOKEN) not in caplog.text
 
 

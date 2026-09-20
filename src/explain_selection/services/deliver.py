@@ -8,7 +8,7 @@ disambiguates, the user is asked and the pick is remembered.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import assert_never
+from typing import Final, assert_never
 
 from explain_selection.domain import (
     DEEP_LINK_QUERY_LIMIT,
@@ -40,7 +40,7 @@ from explain_selection.services.protocols import (
     TempFileWriter,
 )
 
-MODE_A_SKILL: str = "/explain-selection:explain"
+MODE_A_SKILL: Final[str] = "/explain-selection:explain"
 
 
 class LongSelection(Enum):

@@ -10,6 +10,7 @@ from dataclasses import dataclass
 
 from explain_selection.domain import (
     InboxToken,
+    Pid,
     RegistryEntry,
     SessionId,
     pid_from_socket_path,
@@ -47,13 +48,21 @@ class Registered:
 
 
 @dataclass(frozen=True, slots=True)
+class Removed:
+    """The session's entries were deleted; ``pids`` names the files that went."""
+
+    pids: tuple[Pid, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class Skipped:
-    """No entry was written; ``reason`` says why (never contains the token)."""
+    """Nothing was written or removed; ``reason`` says why (never contains the token)."""
 
     reason: str
 
 
 RegisterResult = Registered | Skipped
+UnregisterResult = Removed | Skipped
 
 
 def register_session(ctx: HookContext, deps: RegisterDeps) -> RegisterResult:
@@ -81,7 +90,7 @@ def register_session(ctx: HookContext, deps: RegisterDeps) -> RegisterResult:
     return Registered(entry)
 
 
-def unregister_session(ctx: HookContext, deps: RegisterDeps) -> RegisterResult:
+def unregister_session(ctx: HookContext, deps: RegisterDeps) -> UnregisterResult:
     """Remove this session's entry on SessionEnd, by socket pid or, failing that, session id.
 
     Claude Code does not export the messaging socket to the SessionEnd hook, so the pid is
@@ -90,15 +99,15 @@ def unregister_session(ctx: HookContext, deps: RegisterDeps) -> RegisterResult:
     pid = pid_from_socket_path(ctx.socket_path) if ctx.socket_path else None
     if pid is not None:
         deps.registry.delete(pid)
-        return Skipped(f"entry removed for pid {pid}")
+        return Removed((pid,))
     if ctx.session_id is None:
         return Skipped("no messaging socket or session id to identify the entry")
-    stale = [e.pid for e in deps.registry.read_all() if e.session_id == ctx.session_id]
+    stale = tuple(e.pid for e in deps.registry.read_all() if e.session_id == ctx.session_id)
     if not stale:
         return Skipped("no entry recorded for this session id")
     for entry_pid in stale:
         deps.registry.delete(entry_pid)
-    return Skipped(f"entry removed for pid {', '.join(str(p) for p in stale)}")
+    return Removed(stale)
 
 
 __all__ = [
@@ -106,7 +115,9 @@ __all__ = [
     "RegisterDeps",
     "RegisterResult",
     "Registered",
+    "Removed",
     "Skipped",
+    "UnregisterResult",
     "register_session",
     "unregister_session",
 ]

@@ -124,6 +124,14 @@ class TempFileWriter(Protocol):
         ...
 
 
+class Notifier(Protocol):
+    """Shows a short message to the user outside the terminal."""
+
+    def notify(self, title: str, message: str) -> None:
+        """Best effort; implementations may raise, callers must not."""
+        ...
+
+
 __all__ = [
     "Chooser",
     "Clock",
@@ -131,6 +139,7 @@ __all__ = [
     "InboxAddress",
     "InboxPoster",
     "LinkOpener",
+    "Notifier",
     "RegistryStore",
     "SessionLister",
     "TargetMemory",

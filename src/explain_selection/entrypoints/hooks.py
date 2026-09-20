@@ -22,7 +22,9 @@ from explain_selection.services import (
     RegisterDeps,
     Registered,
     RegisterResult,
+    Removed,
     Skipped,
+    UnregisterResult,
 )
 
 HookRunner = Callable[[str, Mapping[str, str], RegisterDeps], int]
@@ -51,7 +53,9 @@ def build_hook_context(stdin_text: str, environ: Mapping[str, str]) -> HookConte
     )
 
 
-def log_result(target: logging.Logger, event: str, result: RegisterResult) -> None:
+def log_result(
+    target: logging.Logger, event: str, result: RegisterResult | UnregisterResult
+) -> None:
     """Record the outcome without ever touching the token."""
     match result:
         case Registered(entry=entry):
@@ -63,6 +67,8 @@ def log_result(target: logging.Logger, event: str, result: RegisterResult) -> No
                 entry.tty,
                 entry.tmux_pane,
             )
+        case Removed(pids=pids):
+            target.info("%s: removed pid %s", event, ", ".join(str(int(p)) for p in pids))
         case Skipped(reason=reason):
             target.info("%s: skipped: %s", event, reason)
         case _:

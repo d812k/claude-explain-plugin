@@ -11,7 +11,7 @@ import os
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Final, Protocol, assert_never
+from typing import TYPE_CHECKING, Final, assert_never
 
 from explain_selection.domain import SessionStatus, describe_target
 from explain_selection.entrypoints.runtime import (
@@ -26,6 +26,7 @@ from explain_selection.services import (
     DeliveryPolicy,
     Injected,
     NothingToSend,
+    Notifier,
     OpenedNewWindow,
     Outcome,
     deliver_selection,
@@ -40,14 +41,6 @@ NOTIFICATION_TITLE: Final[str] = "Explain selection"
 USAGE: Final[str] = "usage: explain-selection-capture [--text -|<string>]"
 TEXT_FLAG: Final[str] = "--text"
 STDIN_MARKER: Final[str] = "-"
-
-
-class Notifier(Protocol):
-    """Shows a short message to the user outside the terminal."""
-
-    def notify(self, title: str, message: str) -> None:
-        """Best effort; implementations may raise, callers must not."""
-        ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -196,7 +189,6 @@ __all__ = [
     "FromArgument",
     "FromStdin",
     "InputSource",
-    "Notifier",
     "build_policy",
     "main",
     "parse_argv",

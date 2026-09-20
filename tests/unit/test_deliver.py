@@ -14,6 +14,7 @@ from explain_selection.domain import (
     join_targets,
 )
 from explain_selection.services import (
+    MODE_A_SKILL,
     Cancelled,
     DeliverDeps,
     DeliveryPolicy,
@@ -23,7 +24,6 @@ from explain_selection.services import (
     OpenedNewWindow,
     deliver_selection,
 )
-from explain_selection.services.deliver import MODE_A_SKILL
 from tests.builders import entry, session
 from tests.fakes import (
     FakeChooser,

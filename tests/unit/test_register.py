@@ -7,6 +7,7 @@ from explain_selection.services import (
     HookContext,
     RegisterDeps,
     Registered,
+    Removed,
     Skipped,
     register_session,
     unregister_session,
@@ -91,7 +92,7 @@ def test_unregister_deletes_the_entry_for_the_socket_pid() -> None:
     deps = _deps(registry)
     register_session(DEFAULT_CTX, deps)
     result = unregister_session(DEFAULT_CTX, deps)
-    assert isinstance(result, Skipped)
+    assert result == Removed(pids=(Pid(2268544),))
     assert registry.deleted == [Pid(2268544)]
     assert registry.entries == {}
 
@@ -108,7 +109,7 @@ def test_unregister_without_socket_falls_back_to_the_session_id() -> None:
     deps = _deps(registry)
     register_session(DEFAULT_CTX, deps)
     result = unregister_session(replace(DEFAULT_CTX, socket_path=None, token=None), deps)
-    assert isinstance(result, Skipped)
+    assert result == Removed(pids=(Pid(2268544),))
     assert registry.deleted == [Pid(2268544)]
     assert registry.entries == {}
 
@@ -123,7 +124,8 @@ def test_unregister_by_session_id_leaves_other_sessions_alone() -> None:
         socket_path="/run/user/501/cc-socks/999.sock",
     )
     register_session(other, deps)
-    unregister_session(replace(other, socket_path=None, token=None), deps)
+    result = unregister_session(replace(other, socket_path=None, token=None), deps)
+    assert result == Removed(pids=(Pid(999),))
     assert registry.deleted == [Pid(999)]
     assert set(registry.entries) == {Pid(2268544)}
 
