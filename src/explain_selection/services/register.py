@@ -2,7 +2,8 @@
 
 Runs from the SessionStart, CwdChanged and SessionEnd hooks. The session's inbox socket path
 and token arrive in the environment; the Claude Code pid is read from the socket path, never
-from a process-tree walk. The controlling tty is looked up for that pid.
+from a process-tree walk. The controlling tty is looked up for that pid. SessionEnd falls back
+to the hook's ``session_id`` when the socket is not exported.
 """
 
 from dataclasses import dataclass
@@ -81,14 +82,23 @@ def register_session(ctx: HookContext, deps: RegisterDeps) -> RegisterResult:
 
 
 def unregister_session(ctx: HookContext, deps: RegisterDeps) -> RegisterResult:
-    """Remove this session's entry on SessionEnd; skip when the pid cannot be determined."""
-    if not ctx.socket_path:
-        return Skipped("no messaging socket in environment")
-    pid = pid_from_socket_path(ctx.socket_path)
-    if pid is None:
-        return Skipped("socket path is not a cc-socks path")
-    deps.registry.delete(pid)
-    return Skipped(f"entry removed for pid {pid}")
+    """Remove this session's entry on SessionEnd, by socket pid or, failing that, session id.
+
+    Claude Code does not export the messaging socket to the SessionEnd hook, so the pid is
+    usually unknown here; the entry is then found by the ``session_id`` recorded at register.
+    """
+    pid = pid_from_socket_path(ctx.socket_path) if ctx.socket_path else None
+    if pid is not None:
+        deps.registry.delete(pid)
+        return Skipped(f"entry removed for pid {pid}")
+    if ctx.session_id is None:
+        return Skipped("no messaging socket or session id to identify the entry")
+    stale = [e.pid for e in deps.registry.read_all() if e.session_id == ctx.session_id]
+    if not stale:
+        return Skipped("no entry recorded for this session id")
+    for entry_pid in stale:
+        deps.registry.delete(entry_pid)
+    return Skipped(f"entry removed for pid {', '.join(str(p) for p in stale)}")
 
 
 __all__ = [

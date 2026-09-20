@@ -96,8 +96,43 @@ def test_unregister_deletes_the_entry_for_the_socket_pid() -> None:
     assert registry.entries == {}
 
 
-def test_unregister_without_socket_is_skipped() -> None:
+def test_unregister_without_socket_and_no_matching_entry_is_skipped() -> None:
     registry = FakeRegistry()
     result = unregister_session(replace(DEFAULT_CTX, socket_path=None), _deps(registry))
     assert isinstance(result, Skipped)
     assert registry.deleted == []
+
+
+def test_unregister_without_socket_falls_back_to_the_session_id() -> None:
+    registry = FakeRegistry()
+    deps = _deps(registry)
+    register_session(DEFAULT_CTX, deps)
+    result = unregister_session(replace(DEFAULT_CTX, socket_path=None, token=None), deps)
+    assert isinstance(result, Skipped)
+    assert registry.deleted == [Pid(2268544)]
+    assert registry.entries == {}
+
+
+def test_unregister_by_session_id_leaves_other_sessions_alone() -> None:
+    registry = FakeRegistry()
+    deps = _deps(registry)
+    register_session(DEFAULT_CTX, deps)
+    other = replace(
+        DEFAULT_CTX,
+        session_id=SessionId("other"),
+        socket_path="/run/user/501/cc-socks/999.sock",
+    )
+    register_session(other, deps)
+    unregister_session(replace(other, socket_path=None, token=None), deps)
+    assert registry.deleted == [Pid(999)]
+    assert set(registry.entries) == {Pid(2268544)}
+
+
+def test_unregister_without_socket_or_session_id_is_skipped() -> None:
+    registry = FakeRegistry()
+    deps = _deps(registry)
+    register_session(DEFAULT_CTX, deps)
+    result = unregister_session(replace(DEFAULT_CTX, socket_path=None, session_id=None), deps)
+    assert isinstance(result, Skipped)
+    assert registry.deleted == []
+    assert set(registry.entries) == {Pid(2268544)}
