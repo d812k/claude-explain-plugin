@@ -6,7 +6,12 @@ from pathlib import Path
 from typing import Final
 
 _LOG_FORMAT: Final[str] = "%(asctime)s %(levelname)s %(name)s: %(message)s"
-PACKAGE_LOGGER: Final[str] = "explain_selection"
+
+
+def entrypoint_logger() -> logging.Logger:
+    """The logger every ``main()`` configures: the root, because a module run with
+    ``python -m`` logs under ``__main__`` and only the root sees that."""
+    return logging.getLogger()
 
 
 def configure_logging(log_file: Path, target: logging.Logger) -> None:
@@ -29,4 +34,4 @@ def read_stdin() -> str:
     return "" if sys.stdin.isatty() else sys.stdin.read()
 
 
-__all__ = ["PACKAGE_LOGGER", "checkout_root", "configure_logging", "read_stdin"]
+__all__ = ["checkout_root", "configure_logging", "entrypoint_logger", "read_stdin"]

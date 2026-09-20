@@ -8,7 +8,7 @@ import pytest
 from explain_selection.domain import Pid
 from explain_selection.entrypoints import register, unregister
 from explain_selection.entrypoints.hooks import build_hook_context
-from explain_selection.entrypoints.runtime import configure_logging
+from explain_selection.entrypoints.runtime import configure_logging, entrypoint_logger
 from explain_selection.services import RegisterDeps
 from tests.builders import FAKE_TOKEN, entry
 from tests.fakes import FakeClock, FakeRegistry, FakeTtyLookup
@@ -92,6 +92,24 @@ def test_logs_describe_the_outcome_without_the_token(caplog: pytest.LogCaptureFi
     assert "register: registered pid 4242 cwd=/work/repo tty=ttys004 pane=%3" in caplog.text
     assert "register: skipped: no messaging socket in environment" in caplog.text
     assert str(FAKE_TOKEN) not in caplog.text
+
+
+def test_main_uses_the_root_logger_so_dunder_main_records_reach_the_file(
+    tmp_path: Path,
+) -> None:
+    log_file = tmp_path / "explain-selection.log"
+    target = entrypoint_logger()
+    handlers_before, level_before = list(target.handlers), target.level
+    try:
+        configure_logging(log_file, target)
+        logging.getLogger("__main__").info("from a module run with python -m")
+    finally:
+        for handler in target.handlers:
+            if handler not in handlers_before:
+                handler.close()
+                target.removeHandler(handler)
+        target.setLevel(level_before)
+    assert "from a module run with python -m" in log_file.read_text()
 
 
 def test_configure_logging_writes_a_private_file(tmp_path: Path) -> None:

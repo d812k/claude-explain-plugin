@@ -12,9 +12,9 @@ from typing import Final, assert_never
 
 from explain_selection.domain import InboxToken, SessionId
 from explain_selection.entrypoints.runtime import (
-    PACKAGE_LOGGER,
     checkout_root,
     configure_logging,
+    entrypoint_logger,
     read_stdin,
 )
 from explain_selection.services import (
@@ -78,7 +78,7 @@ def hook_main(run: HookRunner) -> int:
 
         environ = dict(os.environ)
         settings = load_settings(environ, resolve_plugin_root(environ, checkout_root()))
-        configure_logging(settings.log_file, logging.getLogger(PACKAGE_LOGGER))
+        configure_logging(settings.log_file, entrypoint_logger())
         deps = build_register_deps(settings, SubprocessRunner())
         return run(read_stdin(), environ, deps)
     except Exception:
