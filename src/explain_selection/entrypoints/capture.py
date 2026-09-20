@@ -115,7 +115,7 @@ def run(
         logger.exception("delivery failed")
         _notify(notifier, "Could not deliver the selection; see the log.")
         return 0
-    _report(outcome, notifier)
+    _report(outcome, policy, notifier)
     return 0
 
 
@@ -142,7 +142,7 @@ def main() -> int:
         return 0
 
 
-def _report(outcome: Outcome, notifier: Notifier) -> None:
+def _report(outcome: Outcome, policy: DeliveryPolicy, notifier: Notifier) -> None:
     match outcome:
         case Injected(target=target, reason=reason, chars=chars):
             status = target.session.status
@@ -159,13 +159,15 @@ def _report(outcome: Outcome, notifier: Notifier) -> None:
                     f"Sent to {describe_target(target)}; it is {status.value} and will "
                     "answer when it is free.",
                 )
-        case OpenedNewWindow(cwd=cwd, used_tempfile=used_tempfile, truncated=truncated):
+            _report_truncation(outcome.truncated, outcome.original_chars, policy, notifier)
+        case OpenedNewWindow(cwd=cwd, used_tempfile=used_tempfile, link_truncated=link_truncated):
             logger.info(
-                "no live session; opened a new window in %s (tempfile=%s, truncated=%s)",
+                "no live session; opened a new window in %s (tempfile=%s, link_truncated=%s)",
                 cwd,
                 used_tempfile,
-                truncated,
+                link_truncated,
             )
+            _report_truncation(outcome.truncated, outcome.original_chars, policy, notifier)
         case Cancelled():
             logger.info("session choice cancelled by the user")
         case NothingToSend():
@@ -173,6 +175,18 @@ def _report(outcome: Outcome, notifier: Notifier) -> None:
             _notify(notifier, "Nothing selected.")
         case _:
             assert_never(outcome)
+
+
+def _report_truncation(
+    truncated: bool, original_chars: int, policy: DeliveryPolicy, notifier: Notifier
+) -> None:
+    if not truncated:
+        return
+    logger.info("selection truncated to %d of %d chars", policy.max_chars, original_chars)
+    _notify(
+        notifier,
+        f"Selection truncated to {policy.max_chars} characters ({original_chars} selected).",
+    )
 
 
 def _notify(notifier: Notifier, message: str) -> None:

@@ -108,6 +108,37 @@ def test_busy_session_still_receives_and_the_user_is_told() -> None:
     ]
 
 
+def test_truncated_selection_is_injected_and_the_user_is_told() -> None:
+    deps, poster, _ = _deps()
+    notifier = FakeNotifier()
+    assert run([], lambda: "x" * 1_500, POLICY, deps, notifier) == 0
+    assert len(poster.posts) == 1
+    assert notifier.shown == [
+        ("Explain selection", "Selection truncated to 1000 characters (1500 selected).")
+    ]
+
+
+def test_busy_and_truncated_are_both_reported() -> None:
+    deps, _, _ = _deps(status=SessionStatus.WAITING)
+    notifier = FakeNotifier()
+    assert run([], lambda: "x" * 1_001, POLICY, deps, notifier) == 0
+    messages = [message for _, message in notifier.shown]
+    assert messages == [
+        "Sent to work - /work (waiting); it is waiting and will answer when it is free.",
+        "Selection truncated to 1000 characters (1001 selected).",
+    ]
+
+
+def test_truncated_selection_into_a_new_window_is_reported() -> None:
+    deps, _, opener = _deps(live=False)
+    notifier = FakeNotifier()
+    assert run([], lambda: "x" * 1_500, POLICY, deps, notifier) == 0
+    assert len(opener.opened) == 1
+    assert notifier.shown == [
+        ("Explain selection", "Selection truncated to 1000 characters (1500 selected).")
+    ]
+
+
 def test_no_live_session_opens_a_new_window_quietly() -> None:
     deps, _, opener = _deps(live=False)
     notifier = FakeNotifier()

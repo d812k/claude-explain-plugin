@@ -11,6 +11,7 @@ from explain_selection.domain import (
     PickReason,
     Pid,
     RememberedTarget,
+    clean_selection,
     join_targets,
 )
 from explain_selection.services import (
@@ -105,19 +106,47 @@ def test_no_live_session_opens_a_new_window() -> None:
     result = deliver_selection("boom", _policy(), deps)
     assert isinstance(result, OpenedNewWindow)
     assert result.used_tempfile is False
-    assert result.truncated is False
+    assert result.link_truncated is False
     url = opener.opened[0]
     assert url.startswith("claude-cli://open?cwd=")
     assert "explain-selection%3Aexplain" in url
 
 
-def test_long_selection_with_truncate_policy_marks_truncated() -> None:
+def test_long_selection_with_truncate_policy_marks_the_link_truncated() -> None:
     opener = FakeOpener()
     deps = replace(_deps(), opener=opener)
     result = deliver_selection("z" * 6000, _policy(max_chars=6000), deps)
     assert isinstance(result, OpenedNewWindow)
-    assert result.truncated is True
+    assert result.link_truncated is True
+    assert result.truncated is False
     assert result.used_tempfile is False
+
+
+def test_injection_reports_how_much_of_the_selection_survived_cleaning() -> None:
+    deps = replace(_deps(), sessions=FakeSessions((session(10),)))
+    result = deliver_selection("abcdefgh", _policy(max_chars=5), deps)
+    assert isinstance(result, Injected)
+    assert result.truncated is True
+    assert result.original_chars == 8
+    assert result.chars == len(clean_selection("abcdefgh", 5).text)
+
+
+def test_injection_of_a_short_selection_is_not_truncated() -> None:
+    deps = replace(_deps(), sessions=FakeSessions((session(10),)))
+    result = deliver_selection("abc", _policy(max_chars=5), deps)
+    assert isinstance(result, Injected)
+    assert result.truncated is False
+    assert result.original_chars == 3
+    assert result.chars == 3
+
+
+def test_new_window_reports_selection_truncation_separately_from_the_link() -> None:
+    result = deliver_selection("abcdefgh", _policy(max_chars=5), _deps())
+    assert isinstance(result, OpenedNewWindow)
+    assert result.truncated is True
+    assert result.original_chars == 8
+    assert result.chars == len(clean_selection("abcdefgh", 5).text)
+    assert result.link_truncated is False
 
 
 def test_long_selection_with_tempfile_policy_references_the_file() -> None:
