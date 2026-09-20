@@ -32,12 +32,15 @@ class FileTargetMemory:
     def load(self) -> RememberedTarget | None:
         try:
             raw = self._path.read_text(encoding="utf-8")
-        except OSError:
+        except FileNotFoundError:
+            return None
+        except OSError as exc:
+            logger.warning("could not read target memory %s: %s", self._path.name, exc.strerror)
             return None
         try:
             model = _MemoryModel.model_validate_json(raw)
         except ValidationError:
-            logger.warning("ignoring unreadable target memory %s", self._path.name)
+            logger.warning("ignoring invalid target memory %s", self._path.name)
             return None
         return RememberedTarget(Pid(model.pid), model.chosen_at_ms)
 

@@ -1,8 +1,11 @@
 """RegistryFiles persists one private JSON file per session, atomically."""
 
 import json
+import logging
 import stat
 from pathlib import Path
+
+import pytest
 
 from explain_selection.adapters import RegistryFiles
 from explain_selection.domain import Pid
@@ -45,6 +48,21 @@ def test_read_all_skips_invalid_files(tmp_path: Path) -> None:
     store.save(entry(10))
     (tmp_path / "20.json").write_text("{ not valid json", encoding="utf-8")
     assert [e.pid for e in store.read_all()] == [Pid(10)]
+
+
+def test_read_all_skips_files_of_an_unknown_format_version(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    store = RegistryFiles(tmp_path)
+    store.save(entry(10))
+    store.save(entry(20))
+    future = tmp_path / "20.json"
+    data: dict[str, object] = json.loads(future.read_text(encoding="utf-8"))
+    data["version"] = 2
+    future.write_text(json.dumps(data), encoding="utf-8")
+    with caplog.at_level(logging.WARNING, logger="explain_selection"):
+        assert [e.pid for e in store.read_all()] == [Pid(10)]
+    assert "20.json" in caplog.text
 
 
 def test_read_all_on_missing_directory_is_empty(tmp_path: Path) -> None:

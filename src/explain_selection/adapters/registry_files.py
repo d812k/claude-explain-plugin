@@ -10,6 +10,7 @@ import logging
 import os
 import tempfile
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -25,11 +26,15 @@ logger = logging.getLogger(__name__)
 
 
 class _RegistryFileModel(BaseModel):
-    """The on-disk shape (format version 1); camelCase keys, unknown keys ignored."""
+    """The on-disk shape (format version 1); camelCase keys, unknown keys ignored.
+
+    Any other ``version`` fails validation, so a file from a newer format is skipped and
+    logged like any invalid file rather than half-read.
+    """
 
     model_config = ConfigDict(populate_by_name=True, extra="ignore")
 
-    version: int = 1
+    version: Literal[1] = 1
     session_id: str | None = Field(default=None, alias="sessionId")
     pid: int
     cwd: str

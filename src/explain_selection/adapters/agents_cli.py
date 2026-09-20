@@ -7,6 +7,7 @@ busy so an ambiguous session is never mistaken for idle.
 
 import logging
 from datetime import datetime
+from typing import Final
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
@@ -43,6 +44,12 @@ class _AgentsEnvelope(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     agents: list[_AgentModel]
+
+
+# Built once: constructing the adapter compiles the schema and does no I/O.
+_AGENTS_ADAPTER: Final[TypeAdapter[list[_AgentModel] | _AgentsEnvelope]] = TypeAdapter(
+    list[_AgentModel] | _AgentsEnvelope
+)
 
 
 def _started_at_ms(value: int | str | None) -> int:
@@ -93,11 +100,8 @@ class AgentsCli:
         result = self._runner.run([self._claude_bin, "agents", "--json"], timeout=self._timeout_s)
         if result.returncode != 0:
             raise AgentsQueryError(f"claude agents --json exited {result.returncode}")
-        adapter: TypeAdapter[list[_AgentModel] | _AgentsEnvelope] = TypeAdapter(
-            list[_AgentModel] | _AgentsEnvelope
-        )
         try:
-            parsed = adapter.validate_json(result.stdout)
+            parsed = _AGENTS_ADAPTER.validate_json(result.stdout)
         except ValidationError as exc:
             raise AgentsQueryError("claude agents --json had an unexpected shape") from exc
         models = parsed.agents if isinstance(parsed, _AgentsEnvelope) else parsed
