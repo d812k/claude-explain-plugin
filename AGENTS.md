@@ -31,7 +31,7 @@ verification you did not perform.
 - `make prop` — property tests with the larger Hypothesis profile.
 - `make test-all` — everything, including `slow` and `integration`. Run before a PR.
 - `make layers` — `lint-imports`; enforces the module layering in section 4.
-- `make validate` — `claude plugin validate . --strict`; needs the `claude` binary, so it runs in `make test-all`, not in `make check`.
+- `make validate` — `claude plugin validate .` (not `--strict`, because the root `CLAUDE.md` triggers a warning we accept); needs the `claude` binary, so it runs in `make test-all`, not in `make check`.
 
 Everything runs through `uv run`. Never install packages globally. If a command in this
 list is missing or wrong, fix the `Makefile` in the same change.

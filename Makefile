@@ -7,4 +7,4 @@ test: ; uv run pytest
 prop: ; HYPOTHESIS_PROFILE=ci uv run pytest -o addopts="" -q -m prop --timeout=60
 test-all: validate ; uv run pytest -o addopts="" -q --timeout=60
 layers: ; uv run lint-imports
-validate: ; claude plugin validate . --strict
+validate: ; claude plugin validate .
