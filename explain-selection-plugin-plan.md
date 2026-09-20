@@ -256,7 +256,7 @@ No AppleScript, no Accessibility, no TCC prompt at all. Targets a specific pane 
 1. `claude agents --json` → live sessions (`kind=="interactive"`).
 2. Exactly one → use it. (Covers the overwhelming majority of real use.)
 3. Several → ask the frontmost terminal for its tty (`osascript`: iTerm2 `tty of current session of current window`, Terminal.app `tty of selected tab of front window`) and match on `ps -o tty=`. Ghostty exposes no scripting dictionary → skip to 4. **If any candidate has a `tmuxPane`, take the tmux branch in §4.8 instead** — under tmux the emulator tty belongs to the client, not to Claude Code.
-4. Still ambiguous → filter by `status=="idle"` and prefer idle sessions. If still multiple or all busy, `osascript -e 'choose from list …'` showing `name — cwd (status)`, remembered for N minutes in `~/.claude/explain-selection/last-target`.
+4. Still ambiguous → if the user picked a session from the chooser within the last N minutes (`~/.claude/explain-selection/last-target.json`) and it is still a candidate, use it. Otherwise filter by `status=="idle"`; exactly one idle session → use it. If still multiple, `osascript -e 'choose from list …'` showing `name - cwd (status)` with idle sessions first, and remember the pick for N minutes.
 5. None → fall back to mode A with `cwd=$HOME` (or `repo=` if the frontmost window's cwd is known).
 
 ### 4.8 Running inside tmux (or any multiplexer)
