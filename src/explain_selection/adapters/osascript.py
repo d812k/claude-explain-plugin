@@ -5,11 +5,14 @@ runner canned output. The AppleScript itself is macOS-only and is exercised for 
 Mac; the logic that turns its output into domain values is what the unit tests cover.
 """
 
+import logging
 from collections.abc import Sequence
 from typing import Final
 
 from explain_selection.adapters.subprocess_runner import CommandRunner
 from explain_selection.domain import Focus, Target, describe_target
+
+logger = logging.getLogger(__name__)
 
 _FRONTMOST_TTY_SCRIPT: Final[str] = (
     'tell application "System Events" to set frontApp '
@@ -57,6 +60,12 @@ class OsascriptFocus:
             ["osascript", "-e", _FRONTMOST_TTY_SCRIPT], timeout=self._timeout_s
         )
         if result.returncode != 0:
+            # osascript's stderr never carries a token; a TCC denial must be visible in the log.
+            logger.warning(
+                "frontmost-terminal probe: osascript exited %d: %s",
+                result.returncode,
+                result.stderr.strip(),
+            )
             return Focus(terminal_tty=None, tmux_pane=None)
         tty = result.stdout.strip().removeprefix(_DEV_PREFIX)
         return Focus(terminal_tty=tty or None, tmux_pane=None)

@@ -1,5 +1,9 @@
 """The osascript adapters turn AppleScript output into domain values."""
 
+import logging
+
+import pytest
+
 from explain_selection.adapters import CommandResult, OsascriptChooser, OsascriptFocus
 from explain_selection.domain import describe_target, join_targets
 from tests.builders import session
@@ -26,6 +30,17 @@ def test_focus_empty_output_is_none() -> None:
 
 def test_focus_non_zero_exit_is_none() -> None:
     assert OsascriptFocus(_runner("", returncode=1)).probe().terminal_tty is None
+
+
+def test_focus_failure_is_logged_with_exit_code_and_stderr(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    denied = "execution error: Not authorized to send Apple events to System Events. (-1743)"
+    runner = FakeRunner(queue=[CommandResult(returncode=1, stdout="", stderr=denied + "\n")])
+    with caplog.at_level(logging.WARNING, logger="explain_selection"):
+        OsascriptFocus(runner).probe()
+    assert "exited 1" in caplog.text
+    assert denied in caplog.text
 
 
 def test_chooser_maps_the_chosen_label_back_to_its_target() -> None:
