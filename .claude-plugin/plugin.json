@@ -1,0 +1,9 @@
+{
+  "name": "explain-selection",
+  "version": "0.1.0",
+  "description": "Select text in a macOS terminal, press a hotkey, and have it explained in your running Claude Code session",
+  "author": {
+    "name": "Daniel Kisliuk"
+  },
+  "hooks": "./hooks/hooks.json"
+}
