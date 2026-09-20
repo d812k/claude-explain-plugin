@@ -21,6 +21,7 @@ _FRONTMOST_TTY_SCRIPT: Final[str] = (
     "end if\n"
     'return ""'
 )
+_DEV_PREFIX: Final[str] = "/dev/"
 
 
 def _escape(value: str) -> str:
@@ -41,7 +42,11 @@ def _choose_script(labels: Sequence[str]) -> str:
 
 
 class OsascriptFocus:
-    """Reports the tty of the frontmost supported terminal; tmux pane is left to the caller."""
+    """Reports the tty of the frontmost supported terminal; tmux pane is left to the caller.
+
+    iTerm2 and Terminal.app report the device path (``/dev/ttys005``); the registry stores the
+    bare name ``ps`` prints (``ttys005``), so the prefix is stripped here.
+    """
 
     def __init__(self, runner: CommandRunner, *, timeout_s: float = 2.0) -> None:
         self._runner = runner
@@ -53,7 +58,7 @@ class OsascriptFocus:
         )
         if result.returncode != 0:
             return Focus(terminal_tty=None, tmux_pane=None)
-        tty = result.stdout.strip()
+        tty = result.stdout.strip().removeprefix(_DEV_PREFIX)
         return Focus(terminal_tty=tty or None, tmux_pane=None)
 
 

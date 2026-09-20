@@ -16,6 +16,10 @@ def test_focus_returns_the_frontmost_tty() -> None:
     assert focus.tmux_pane is None
 
 
+def test_focus_strips_the_dev_prefix_apple_terminals_report() -> None:
+    assert OsascriptFocus(_runner("/dev/ttys005\n")).probe().terminal_tty == "ttys005"
+
+
 def test_focus_empty_output_is_none() -> None:
     assert OsascriptFocus(_runner("\n")).probe().terminal_tty is None
 

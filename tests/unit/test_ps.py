@@ -15,6 +15,10 @@ def test_returns_the_trimmed_tty() -> None:
     assert PsTtyLookup(_runner("ttys005\n")).tty_for(Pid(10)) == "ttys005"
 
 
+def test_dev_prefix_is_stripped() -> None:
+    assert PsTtyLookup(_runner("/dev/ttys005\n")).tty_for(Pid(10)) == "ttys005"
+
+
 def test_linux_pts_name_is_returned() -> None:
     assert PsTtyLookup(_runner("pts/2\n")).tty_for(Pid(10)) == "pts/2"
 

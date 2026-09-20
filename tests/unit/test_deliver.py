@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 
+from explain_selection.adapters import CommandResult, OsascriptFocus
 from explain_selection.domain import Focus, PickReason, Pid, RememberedTarget, join_targets
 from explain_selection.services import (
     Cancelled,
@@ -23,6 +24,7 @@ from tests.fakes import (
     FakeOpener,
     FakePoster,
     FakeRegistry,
+    FakeRunner,
     FakeSessions,
     FakeTempFiles,
 )
@@ -137,6 +139,27 @@ def test_terminal_tty_focus_selects_the_matching_session() -> None:
     result = deliver_selection("hi", _policy(), deps)
     assert isinstance(result, Injected)
     assert result.target.session.pid == 20
+    assert result.reason is PickReason.TERMINAL_TTY
+
+
+def test_device_path_from_the_terminal_matches_the_registry_tty_name() -> None:
+    poster = FakePoster()
+    registry = FakeRegistry(
+        entries={Pid(10): entry(10, tty="ttys005"), Pid(20): entry(20, tty="ttys006")}
+    )
+    probe = OsascriptFocus(
+        FakeRunner(queue=[CommandResult(returncode=0, stdout="/dev/ttys005\n", stderr="")])
+    )
+    deps = replace(
+        _deps(),
+        sessions=FakeSessions((session(10), session(20))),
+        registry=registry,
+        focus=probe,
+        poster=poster,
+    )
+    result = deliver_selection("hi", _policy(), deps)
+    assert isinstance(result, Injected)
+    assert result.target.session.pid == 10
     assert result.reason is PickReason.TERMINAL_TTY
 
 
