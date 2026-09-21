@@ -1,6 +1,7 @@
 """Side effects: Unix sockets, subprocesses, registry files, tmux."""
 
 from explain_selection.adapters.agents_cli import AgentsCli
+from explain_selection.adapters.claude_settings import JsonClaudeSettingsReader
 from explain_selection.adapters.clock import SystemClock
 from explain_selection.adapters.file_inspector import MISSING_FILE, LocalFileInspector
 from explain_selection.adapters.focus import PaneLookup, TmuxAwareFocus
@@ -41,6 +42,7 @@ __all__ = [
     "FileTargetMemory",
     "HookStdin",
     "InboxSocketPoster",
+    "JsonClaudeSettingsReader",
     "LocalFileInspector",
     "LocalInstallFiles",
     "OpenLinkOpener",
