@@ -11,22 +11,19 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, Literal
 
+from explain_selection.domain import MACOS_ONLY, SERVICE_NAME, SHORTCUT_SETTINGS_PATH
 from explain_selection.errors import InstallError
 from explain_selection.services.protocols import InstallFiles, ServicesRegistrar
 
 type Platform = Literal["darwin", "other"]
 type StepStatus = Literal["done", "skipped", "planned", "failed"]
 
-SERVICE_NAME: Final[str] = "Explain selection"
+# SERVICE_NAME and MACOS_ONLY are the domain's; they stay in __all__ for the CLI and tests.
 BUNDLE_NAME: Final[str] = f"{SERVICE_NAME}.workflow"
 CONFIG_FILE: Final[str] = "config.env"
 PROMPT_FILE: Final[str] = "explain-prompt.txt"
 SHIM_FILE: Final[str] = "capture"
-MANUAL_SHORTCUT_HINT: Final[str] = (
-    "set it manually: System Settings > Keyboard > Keyboard Shortcuts > Services > Text > "
-    f"{SERVICE_NAME}"
-)
-MACOS_ONLY: Final[str] = "macOS only"
+MANUAL_SHORTCUT_HINT: Final[str] = f"set it manually: {SHORTCUT_SETTINGS_PATH}"
 PRIVATE_FILE_MODE: Final[int] = 0o600
 EXECUTABLE_MODE: Final[int] = 0o700
 _TEMPLATE_RELATIVE: Final[Path] = Path("templates") / PROMPT_FILE
@@ -233,6 +230,7 @@ _STEPS: Final[tuple[tuple[str, _Step], ...]] = (
 
 __all__ = [
     "BUNDLE_NAME",
+    "MACOS_ONLY",
     "MANUAL_SHORTCUT_HINT",
     "SERVICE_NAME",
     "InstallDeps",

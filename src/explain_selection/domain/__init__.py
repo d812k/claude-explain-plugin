@@ -10,6 +10,8 @@ from explain_selection.domain.doctor import evaluate
 from explain_selection.domain.doctor_checks import (
     INSTALL_FIX,
     MACOS_ONLY,
+    SERVICE_NAME,
+    SHORTCUT_SETTINGS_PATH,
     UNREADABLE_PLUGIN_VERSION,
     Check,
     CheckStatus,
@@ -70,6 +72,8 @@ __all__ = [
     "MACOS_ONLY",
     "MAX_SOCKET_PATH_BYTES",
     "REGISTRY_FORMAT_VERSION",
+    "SERVICE_NAME",
+    "SHORTCUT_SETTINGS_PATH",
     "TEXT_PLACEHOLDER",
     "TRUNCATION_MARKER",
     "UNREADABLE_PLUGIN_VERSION",

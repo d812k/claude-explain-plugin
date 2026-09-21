@@ -3,6 +3,8 @@
 import shlex
 from pathlib import Path
 
+from explain_selection import domain
+from explain_selection.domain import MACOS_ONLY, SHORTCUT_SETTINGS_PATH
 from explain_selection.entrypoints.settings import ENV_PREFIX, Settings
 from explain_selection.services import (
     MANUAL_SHORTCUT_HINT,
@@ -140,6 +142,14 @@ def test_other_platforms_skip_the_macos_steps() -> None:
     assert files.replaced == []
     assert (registrar.shortcuts, registrar.refreshes) == ([], 0)
     assert report.ok
+
+
+def test_the_installer_reuses_the_doctor_wording_from_the_domain() -> None:
+    assert SERVICE_NAME is domain.SERVICE_NAME
+    hint = f"set it manually: {SHORTCUT_SETTINGS_PATH}"
+    assert hint == MANUAL_SHORTCUT_HINT
+    details = _details(install_plugin(_plan(platform="other"), _deps()))
+    assert (details["service"], details["shortcut"]) == (MACOS_ONLY, MACOS_ONLY)
 
 
 def test_a_status_without_the_service_fails_the_shortcut_step() -> None:
