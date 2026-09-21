@@ -5,9 +5,9 @@ A Claude Code plugin that delivers terminal selections into your running session
 ## Requirements
 
 - macOS (for the hotkey; the CLI and skills work on Linux)
-- Claude Code 2.1.278 or later
+- Claude Code with cross-session messaging (the per-session inbox socket)
 - Python 3.12 (installed by the plugin)
-- uv (installed automatically if missing)
+- uv; the install skill shows the install command and asks before running it
 
 ## Install
 
@@ -35,7 +35,7 @@ When exactly one interactive session is running, the selection goes there. When 
 4. The only idle session
 5. Otherwise a chooser dialog listing sessions idle first, then busy, then waiting
 
-When no interactive session is running, a new Claude Code window opens with `/explain-selection:explain <text>` through the `claude-cli://` deep link.
+When no interactive session is running, a new Claude Code window opens with `/explain-selection:explain <text>` (at most 5000 characters of text) through the `claude-cli://` deep link.
 
 A notification reports truncation, delivery to a busy session, and the new-window fallback. Selections longer than the configured maximum are truncated with a marker and the selected size is reported.
 
@@ -54,6 +54,8 @@ Configuration lives in `~/.claude/explain-selection/config.env` with `EXPLAIN_SE
 - `EXPLAIN_SELECTION_LONG_SELECTION` (default truncate) — How to handle long selections: `truncate` or `tempfile` (for mode A new-window fallback)
 - `EXPLAIN_SELECTION_PROMPT_TEMPLATE` (default `~/.claude/explain-selection/explain-prompt.txt`) — Path to the prompt template file
 - `EXPLAIN_SELECTION_REMEMBER_TARGET_MINUTES` (default 10) — How long to remember the user's manual session pick from the chooser
+- `EXPLAIN_SELECTION_FALLBACK_CWD` (default `$HOME`) — The directory to use as cwd when no better choice is available
+- `EXPLAIN_SELECTION_PLUGIN_ROOT` (default `$CLAUDE_PLUGIN_ROOT`) — Path to the plugin installation directory
 - `EXPLAIN_SELECTION_HOME` (default `~/.claude/explain-selection`) — Base directory for registry, logs and configuration
 
 The prompt template at `~/.claude/explain-selection/explain-prompt.txt` contains the text sent to Claude Code. The `{text}` placeholder is replaced by the selection.
@@ -76,25 +78,25 @@ Doctor checks: home, venv, version, shim, config, template, plugin-enabled, agen
 
 SessionStart and CwdChanged hooks register each session in `~/.claude/explain-selection/sessions/<pid>.json` with mode 0600. Each entry contains the pid, cwd, tty, tmux pane, inbox socket path and token. SessionEnd removes the entry. Tokens never appear in logs.
 
-The registry directory `~/.claude/explain-selection/sessions/` has mode 0700. Stale entries are pruned when their pid is not in `claude agents --json`.
+The registry directory `~/.claude/explain-selection/sessions/` has mode 0700. Stale entries are pruned only when the pid is absent from `claude agents --json` and the process is dead.
 
 ### Target ladder
 
-When several sessions are running, the plugin finds the focused terminal tty through AppleScript (iTerm2 `tty of current session of current window`, Terminal.app `tty of selected tab of front window`) and matches it against the registry. When running under tmux, the plugin takes the tmux pane from the `TMUX_PANE` environment variable and matches that instead.
+When several sessions are running, the hooks record each session's tmux pane in the registry; at hotkey time the plugin asks tmux for the active pane of the attached client and matches it against those entries. The terminal tty is read through AppleScript (iTerm2 `tty of current session of current window`, Terminal.app `tty of selected tab of front window`) and matched against the registry.
 
 If the focused session cannot be determined, the plugin checks if the user picked a session from the chooser within the configured `remember_target_minutes` and that session is still running. Otherwise it filters by idle sessions. If exactly one idle session exists, it uses that. If still ambiguous, an AppleScript chooser dialog lists sessions (idle first, then busy, then waiting) and remembers the pick.
 
 ### Socket delivery
 
-The plugin connects to the session's inbox socket with a 2 second timeout, sends two JSON lines (message and metadata), and closes. The server does not send a reply or close the connection. The inbox token is read from the registry and included in the metadata line.
+The plugin connects to the session's inbox socket with a short timeout and writes newline-delimited JSON: when the session is registered, first an auth line carrying the inbox token from the registry, then the user message line; unregistered sessions get only the message line, derived from the pid-based socket path. The server sends no reply and does not close the connection; the plugin closes after writing.
 
 ### Deep link fallback
 
-When no interactive session is running, the plugin opens a new Claude Code window with the `claude-cli://` deep link scheme: `claude-cli:///skill/explain-selection:explain?args=<url-encoded-text>`.
+When no interactive session is running, the plugin opens a new Claude Code window with the `claude-cli://` deep link scheme: `claude-cli://open?cwd=<cwd>&q=/explain-selection:explain <text>`. The `q` parameter holds at most 5000 characters; longer selections are shortened and a notification says so.
 
 ### Security
 
-Inbox tokens are secrets stored in mode 0600 registry files under a mode 0700 directory. They never appear in logs, test fixtures or committed files. Sessions that bypass permission prompts receive token-less messages, so run the plugin's hooks (restart sessions after enabling the plugin) to enable token-bearing delivery.
+Inbox tokens are secrets stored in mode 0600 registry files under a mode 0700 directory. They never appear in logs, test fixtures or committed files. Sessions that bypass permission prompts hold token-less messages for approval, so run the plugin's hooks (restart sessions after enabling the plugin) to enable token-bearing delivery.
 
 ## Troubleshooting
 
@@ -108,7 +110,7 @@ Relaunch your terminal apps (iTerm2, Terminal, Ghostty) or open System Settings 
 
 ### Automation permission
 
-macOS prompts once per app for Automation permission. The prompt appears the first time the hotkey runs with several sessions open. To check the permission: System Settings > Privacy & Security > Automation, then look for iTerm2 or Terminal allowing System Events.
+macOS prompts once per app for Automation permission. The prompt appears the first time the hotkey runs with several sessions open. To check the permission: System Settings > Privacy & Security > Automation, then look for the entry that allows the Quick Action runner (Automator or WorkflowServiceRunner) to control iTerm2 or Terminal.
 
 ### Messages held
 
@@ -117,7 +119,7 @@ If messages appear in the held queue instead of arriving immediately, check the 
 ## Limitations
 
 - macOS only for the hotkey. The CLI and skills work anywhere Claude Code runs.
-- Ghostty 1.2.3 needs the selection to reach Services. For Ghostty without Services support, see the Shortcuts route in the Alternatives section or wait for Ghostty 1.3.0 AppleScript support.
+- Ghostty must pass the selection to the Services menu; if it does not, use the Shortcuts route in the Alternatives section.
 - Selecting text inside Claude Code's own output captures the hard-wrapped rendering, not the original Markdown. Use `/btw`'s `c` key (copy answer as raw Markdown) instead.
 - No clipboard fallback for terminals that do not pass the selection to Services.
 - A custom `EXPLAIN_SELECTION_HOME` breaks the hotkey because the workflow bundle hardcodes the default shim path at `$HOME/.claude/explain-selection/capture`.
