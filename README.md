@@ -52,11 +52,14 @@ Configuration lives in `~/.claude/explain-selection/config.env` with `EXPLAIN_SE
 
 - `EXPLAIN_SELECTION_MAX_CHARS` (default 200000) — Maximum selection length in characters
 - `EXPLAIN_SELECTION_LONG_SELECTION` (default truncate) — How to handle long selections: `truncate` or `tempfile` (for mode A new-window fallback)
-- `EXPLAIN_SELECTION_PROMPT_TEMPLATE` (default `~/.claude/explain-selection/explain-prompt.txt`) — Path to the prompt template file
+- `EXPLAIN_SELECTION_PROMPT_TEMPLATE` — Path to the prompt template file. The code default is `<plugin root>/templates/explain-prompt.txt`; install writes config.env so it points at `~/.claude/explain-selection/explain-prompt.txt`, the editable copy.
 - `EXPLAIN_SELECTION_REMEMBER_TARGET_MINUTES` (default 10) — How long to remember the user's manual session pick from the chooser
 - `EXPLAIN_SELECTION_FALLBACK_CWD` (default `$HOME`) — The directory to use as cwd when no better choice is available
+
+Environment only (cannot be set in config.env):
+
 - `EXPLAIN_SELECTION_PLUGIN_ROOT` (default `$CLAUDE_PLUGIN_ROOT`) — Path to the plugin installation directory
-- `EXPLAIN_SELECTION_HOME` (default `~/.claude/explain-selection`) — Base directory for registry, logs and configuration
+- `EXPLAIN_SELECTION_HOME` (default `~/.claude/explain-selection`) — Base directory for registry, logs and configuration; the home decides where config.env is read from
 
 The prompt template at `~/.claude/explain-selection/explain-prompt.txt` contains the text sent to Claude Code. The `{text}` placeholder is replaced by the selection.
 
@@ -70,7 +73,7 @@ Once the plugin is enabled, these commands are available inside Claude Code's Ba
 - `explain-selection install [--shortcut KEY] [--dry-run] [--plugin-root PATH]` — Install the runtime, workflow bundle and keyboard shortcut. Shortcut format: `@` for Command, `~` for Option, `^` for Control, `$` for Shift, then the letter (e.g., `@~e` for Command-Option-E).
 - `explain-selection doctor` — Check the installation. Output format: one line per check `[ok|warn|fail|skip] name: detail`, each warn or fail followed by an indented `fix: ...` line, last line `doctor: N ok, N warn, N fail, N skipped`. Exit code 1 when any check failed.
 
-Doctor checks: home, venv, version, shim, config, template, plugin-enabled, agents, one per live session (registered or not, socket present, tmux, uptime), stale-entries, inbound-policy (`crossSessionInbound` accept, hold or refuse from Claude Code settings), and macOS only: services-bundle, shortcut, osascript.
+Doctor checks: home, venv, version, shim, config, template, plugin-enabled, settings-files, agents, one per live session (registered or not, socket present, tmux, uptime), stale-entries, inbound-policy (`crossSessionInbound` accept, hold or refuse from Claude Code settings), and macOS only: services-bundle, shortcut, osascript.
 
 ## How it works
 

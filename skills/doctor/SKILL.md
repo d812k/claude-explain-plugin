@@ -3,7 +3,6 @@ name: doctor
 description: Check the explain-selection installation, the live sessions and the inbox policy, and explain how to fix what is wrong
 disable-model-invocation: true
 user-invocable: true
-allowed-tools: Bash(explain-selection:*)
 ---
 
 # Doctor output

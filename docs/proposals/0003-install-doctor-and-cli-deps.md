@@ -21,7 +21,7 @@ Status: accepted on 2026-09-21. Phases 5 and 6 add the install and doctor subcom
 ### 2.2 Doctor: read-only diagnostics
 
 - `explain-selection doctor` prints one line per check with an exact fix for every warn or fail. Pure: no writes, no changes, no side effects.
-- Checks: venv exists, package version matches `plugin.json`, socket directory is reachable, registry has entries, sessions in the registry are live, config file is valid, prompt template exists.
+- Checks: home, venv, version, shim, config, template, plugin-enabled, settings-files, agents, one per live session, stale-entries, inbound-policy, and macOS only: services-bundle, shortcut, osascript.
 - Uses `LiveSession.started_at_ms` and `RegistryEntry.tmux` in session output lines to show more context.
 - The skill `/explain-selection:doctor` will wrap it.
 

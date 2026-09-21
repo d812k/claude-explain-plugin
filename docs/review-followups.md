@@ -8,6 +8,12 @@ Items from reviews that were deliberately deferred. Each item names the phase in
 - Resolved: `LiveSession.started_at_ms` and `RegistryEntry.tmux` are now used in `doctor` session output lines.
 - Open: The `stdin` parameter of `CommandRunner.run` is stored but never read. Either use it or remove it.
 
+## Open items
+
+- `entrypoints/cli.py` is at the 300-line guideline; move the send and sessions dispatch out next time it grows.
+- Verify on a Mac that the doctor skill's dynamic context output is injected when the command exits 1.
+- The `list-sessions` eval case fails its LLM judge because the eval sandbox denies the Bash call.
+
 ## Deferred to post-0.1.0
 
 Items deferred from 0.1.0 to keep the scope manageable:

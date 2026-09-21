@@ -25,4 +25,4 @@ Install the explain-selection hotkey on this Mac: runtime venv, Services entry, 
 Notes:
 - The shortcut can be changed with `--shortcut KEY`. Format: `@` for Command, `~` for Option, `^` for Control, `$` for Shift, then the letter. For example, `--shortcut '@~x'` sets Command-Option-X.
 - Re-running the install is safe and idempotent. It will update the venv, refresh the shim, and verify the Services entry and shortcut.
-- Pass `--dry-run` to see what would be done without making changes.
+- `--dry-run` shows the planned steps without making changes; when the runtime venv does not exist yet, bootstrap prints what it would create and stops, since the dry run of the install step needs the venv's Python.
