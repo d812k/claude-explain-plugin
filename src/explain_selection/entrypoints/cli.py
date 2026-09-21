@@ -75,16 +75,26 @@ def build_parser() -> argparse.ArgumentParser:
 def run(
     argv: Sequence[str],
     stdin_text: Callable[[], str],
-    deps: SendDeps,
+    build_deps: Callable[[], SendDeps],
     out: TextIO,
     err: TextIO,
 ) -> int:
-    """Run one subcommand, printing to ``out`` and ``err``; returns the exit code."""
+    """Run one subcommand, printing to ``out`` and ``err``; returns the exit code.
+
+    ``build_deps`` runs only for ``sessions`` and ``send``, once argv has parsed, so
+    ``version`` and usage errors never read settings, open the log or start a subprocess.
+    """
     args = build_parser().parse_args(argv)
     command: str = args.command
     if command == "version":
         print(package_version(), file=out)
         return EXIT_OK
+    try:
+        deps = build_deps()
+    except Exception as error:
+        logger.exception("cli could not start")
+        print(f"{DISTRIBUTION}: could not start: {error}", file=err)
+        return EXIT_FAILED
     try:
         if command == "sessions":
             return _sessions(deps, out, err)
@@ -102,20 +112,18 @@ def run(
 
 def main() -> int:
     """Entry for ``python -m explain_selection.entrypoints.cli``."""
-    try:
-        from explain_selection.adapters import SubprocessRunner
-        from explain_selection.entrypoints.deps import build_send_deps, current_process
-        from explain_selection.entrypoints.settings import load_settings, resolve_plugin_root
+    return run(sys.argv[1:], read_stdin, _build_deps, sys.stdout, sys.stderr)
 
-        environ = dict(os.environ)
-        settings = load_settings(environ, resolve_plugin_root(environ, checkout_root()))
-        configure_logging(settings.log_file, entrypoint_logger())
-        deps = build_send_deps(settings, environ, current_process(), SubprocessRunner())
-    except Exception as error:
-        logger.exception("cli could not start")
-        print(f"{DISTRIBUTION}: could not start: {error}", file=sys.stderr)
-        return EXIT_FAILED
-    return run(sys.argv[1:], read_stdin, deps, sys.stdout, sys.stderr)
+
+def _build_deps() -> SendDeps:
+    from explain_selection.adapters import SubprocessRunner
+    from explain_selection.entrypoints.deps import build_send_deps, current_process
+    from explain_selection.entrypoints.settings import load_settings, resolve_plugin_root
+
+    environ = dict(os.environ)
+    settings = load_settings(environ, resolve_plugin_root(environ, checkout_root()))
+    configure_logging(settings.log_file, entrypoint_logger())
+    return build_send_deps(settings, environ, current_process(), SubprocessRunner())
 
 
 def format_sessions(summaries: Sequence[SessionSummary]) -> list[str]:

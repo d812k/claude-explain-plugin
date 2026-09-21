@@ -1,7 +1,7 @@
 """The explain-selection command line: version, sessions and send, driven through ``run``."""
 
 import io
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 import pytest
 
@@ -26,15 +26,25 @@ def _no_stdin() -> str:
     raise AssertionError("stdin must not be read")
 
 
+def _no_deps() -> SendDeps:
+    raise AssertionError("the dependencies must not be built")
+
+
 def _run(argv: Sequence[str], deps: SendDeps, stdin: str | None = None) -> tuple[int, str, str]:
+    return _run_with(argv, lambda: deps, stdin)
+
+
+def _run_with(
+    argv: Sequence[str], build_deps: Callable[[], SendDeps], stdin: str | None = None
+) -> tuple[int, str, str]:
     out, err = io.StringIO(), io.StringIO()
     stdin_text = _no_stdin if stdin is None else (lambda: stdin)
-    code = run(argv, stdin_text, deps, out, err)
+    code = run(argv, stdin_text, build_deps, out, err)
     return code, out.getvalue(), err.getvalue()
 
 
-def test_version_prints_the_package_version() -> None:
-    code, out, err = _run(["version"], _deps())
+def test_version_prints_the_package_version_without_building_the_dependencies() -> None:
+    code, out, err = _run_with(["version"], _no_deps)
     assert (code, out, err) == (0, f"{package_version()}\n", "")
 
 
@@ -42,9 +52,30 @@ def test_version_is_a_dotted_number_when_installed() -> None:
     assert package_version().count(".") >= 2
 
 
-def test_a_subcommand_is_required() -> None:
+def test_a_subcommand_is_required_and_the_dependencies_are_not_built_for_usage_errors() -> None:
     with pytest.raises(SystemExit):
-        _run([], _deps())
+        _run_with([], _no_deps)
+
+
+def test_sessions_builds_the_dependencies_exactly_once() -> None:
+    deps = _deps()
+    calls: list[int] = []
+
+    def build_deps() -> SendDeps:
+        calls.append(1)
+        return deps
+
+    code, _, err = _run_with(["sessions"], build_deps)
+    assert (code, err, len(calls)) == (0, "", 1)
+
+
+def test_a_failing_start_is_reported_and_exits_one() -> None:
+    def build_deps() -> SendDeps:
+        raise RuntimeError("config.env is malformed")
+
+    code, out, err = _run_with(["sessions"], build_deps)
+    assert (code, out) == (1, "")
+    assert err == "explain-selection: could not start: config.env is malformed\n"
 
 
 def test_sessions_prints_one_aligned_line_per_live_session_in_chooser_order() -> None:
