@@ -29,8 +29,10 @@ from explain_selection.adapters.subprocess_runner import (
 from explain_selection.adapters.target_memory import FileTargetMemory
 from explain_selection.adapters.temp_files import TempFiles
 from explain_selection.adapters.tmux import TmuxPanes
+from explain_selection.adapters.version_probe import DISTRIBUTION, VenvVersionProbe
 
 __all__ = [
+    "DISTRIBUTION",
     "MISSING_FILE",
     "PBS",
     "AgentsCli",
@@ -57,5 +59,6 @@ __all__ = [
     "TmuxAwareFocus",
     "TmuxPanes",
     "UnixSocketConnector",
+    "VenvVersionProbe",
     "parse_hook_stdin",
 ]
