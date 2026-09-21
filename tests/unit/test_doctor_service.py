@@ -79,6 +79,7 @@ def test_a_healthy_home_yields_healthy_runtime_facts() -> None:
     assert runtime.shim == SHIM
     assert (runtime.shim_plugin_root, runtime.plugin_root) == (str(PLUGIN_ROOT), str(PLUGIN_ROOT))
     assert runtime.config_present
+    assert runtime.template_path == str(TEMPLATE)
     assert (runtime.template_present, runtime.template_has_placeholder) == (True, True)
     assert versions.asked == [PYTHON]
 

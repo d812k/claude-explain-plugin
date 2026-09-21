@@ -19,6 +19,7 @@ from explain_selection.domain import (
 
 FAKE_TOKEN = InboxToken("not-a-real-token")
 PLUGIN_ROOT = "/plugins/explain-selection"
+TEMPLATE_PATH = "/users/me/.claude/explain-selection/explain-prompt.txt"
 VERSION = "0.1.0"
 
 
@@ -98,6 +99,7 @@ HEALTHY_RUNTIME = RuntimeFacts(
     shim_plugin_root=PLUGIN_ROOT,
     plugin_root=PLUGIN_ROOT,
     config_present=True,
+    template_path=TEMPLATE_PATH,
     template_present=True,
     template_has_placeholder=True,
 )

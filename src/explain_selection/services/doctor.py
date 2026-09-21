@@ -89,6 +89,7 @@ def _runtime_facts(deps: DoctorDeps) -> RuntimeFacts:
         shim_plugin_root=_shim_plugin_root(files.read_text(shim)),
         plugin_root=str(deps.plugin_root),
         config_present=files.inspect(deps.home / CONFIG_FILE).exists,
+        template_path=str(deps.template_path),
         template_present=template is not None,
         template_has_placeholder=template is not None and TEXT_PLACEHOLDER in template,
     )

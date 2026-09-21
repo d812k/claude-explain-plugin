@@ -35,6 +35,7 @@ class RuntimeFacts:
     shim_plugin_root: str | None
     plugin_root: str
     config_present: bool
+    template_path: str
     template_present: bool
     template_has_placeholder: bool
 

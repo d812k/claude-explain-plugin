@@ -19,6 +19,7 @@ from tests.builders import (
     HEALTHY_RUNTIME,
     MISSING_FILE,
     PLUGIN_ROOT,
+    TEMPLATE_PATH,
     claude_facts,
     doctor_facts,
     file_facts,
@@ -141,11 +142,18 @@ def test_a_missing_config_only_warns() -> None:
 
 def test_the_template_must_exist_and_contain_the_placeholder() -> None:
     absent = _runtime_check("template", replace(HEALTHY_RUNTIME, template_present=False))
-    assert absent.status == "fail"
-    assert absent.fix == f"restore it from templates/explain-prompt.txt: {INSTALL_FIX}"
+    assert (absent.status, absent.fix) == ("fail", INSTALL_FIX)
+    assert TEMPLATE_PATH in absent.detail
     no_slot = _runtime_check("template", replace(HEALTHY_RUNTIME, template_has_placeholder=False))
-    assert (no_slot.status, no_slot.fix) == ("fail", absent.fix)
+    assert (no_slot.status, no_slot.fix) == (
+        "fail",
+        f"add {{text}} to {TEMPLATE_PATH}, or delete the file and rerun /explain-selection:install",
+    )
     assert "{text}" in no_slot.detail
+    assert TEMPLATE_PATH in no_slot.detail
+    fine = _by_name(evaluate(doctor_facts()), "template")
+    assert fine.status == "ok"
+    assert TEMPLATE_PATH in fine.detail
 
 
 def test_a_disabled_plugin_warns_with_the_plugin_command() -> None:

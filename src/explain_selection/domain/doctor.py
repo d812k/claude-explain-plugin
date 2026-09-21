@@ -136,12 +136,13 @@ def _config(runtime: RuntimeFacts) -> Check:
 
 
 def _template(runtime: RuntimeFacts) -> Check:
-    fix = f"restore it from templates/explain-prompt.txt: {INSTALL_FIX}"
+    path = runtime.template_path
     if not runtime.template_present:
-        return _fail("template", "prompt template missing", fix)
+        return _fail("template", f"prompt template missing at {path}", INSTALL_FIX)
     if not runtime.template_has_placeholder:
-        return _fail("template", "prompt template has no {text} placeholder", fix)
-    return _ok("template", "prompt template has the {text} placeholder")
+        fix = f"add {{text}} to {path}, or delete the file and rerun /explain-selection:install"
+        return _fail("template", f"{path} has no {{text}} placeholder", fix)
+    return _ok("template", f"{path} has the {{text}} placeholder")
 
 
 def _plugin_enabled(claude: ClaudeFacts) -> Check:

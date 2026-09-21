@@ -24,6 +24,7 @@ policies: st.SearchStrategy[InboundPolicy | None] = st.sampled_from(
 )
 roots = st.sampled_from(["/plugins/explain-selection", "/moved/elsewhere"])
 versions = st.sampled_from(["0.1.0", "0.2.0", ""])
+template_paths = st.sampled_from(["/users/me/explain-prompt.txt", "/tmp/my prompt.txt"])
 
 
 @st.composite
@@ -49,6 +50,7 @@ def runtime_facts(draw: st.DrawFn) -> RuntimeFacts:
         shim_plugin_root=draw(st.one_of(st.none(), roots)),
         plugin_root=draw(roots),
         config_present=draw(st.booleans()),
+        template_path=draw(template_paths),
         template_present=draw(st.booleans()),
         template_has_placeholder=draw(st.booleans()),
     )
