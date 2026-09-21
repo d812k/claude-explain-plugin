@@ -16,6 +16,7 @@ from explain_selection.adapters.osascript import (
     OsascriptFocus,
     OsascriptNotifier,
 )
+from explain_selection.adapters.pbs import PBS, PbsServicesRegistrar
 from explain_selection.adapters.process_probe import OsProcessProbe
 from explain_selection.adapters.ps import PsTtyLookup
 from explain_selection.adapters.registry_files import RegistryFiles
@@ -29,6 +30,7 @@ from explain_selection.adapters.temp_files import TempFiles
 from explain_selection.adapters.tmux import TmuxPanes
 
 __all__ = [
+    "PBS",
     "AgentsCli",
     "CommandResult",
     "CommandRunner",
@@ -42,6 +44,7 @@ __all__ = [
     "OsascriptFocus",
     "OsascriptNotifier",
     "PaneLookup",
+    "PbsServicesRegistrar",
     "PsTtyLookup",
     "RegistryFiles",
     "SocketConnector",
