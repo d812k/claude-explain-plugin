@@ -15,15 +15,17 @@ WRAPPERS = (
     "explain-selection",
 )
 CLI_WRAPPER = "explain-selection"
+BOOTSTRAP = REPO / "scripts" / "bootstrap.sh"
+SCRIPTS = (*(BIN / name for name in WRAPPERS), BOOTSTRAP)
+SCRIPT_IDS = (*WRAPPERS, BOOTSTRAP.name)
 
 
 def _entrypoint(name: str) -> str:
     return "cli" if name == CLI_WRAPPER else name.removeprefix("explain-selection-")
 
 
-@pytest.mark.parametrize("name", WRAPPERS)
-def test_wrapper_is_an_executable_sh_script(name: str) -> None:
-    path = BIN / name
+@pytest.mark.parametrize("path", SCRIPTS, ids=SCRIPT_IDS)
+def test_script_is_an_executable_sh_script(path: Path) -> None:
     assert path.is_file()
     assert path.stat().st_mode & stat.S_IXUSR
     assert path.read_text(encoding="utf-8").splitlines()[0] == "#!/bin/sh"
@@ -45,12 +47,32 @@ def test_wrapper_resolves_the_interpreter_in_the_agreed_order(name: str) -> None
     assert first < second < third
 
 
-@pytest.mark.parametrize("name", WRAPPERS)
-def test_wrapper_has_no_bashisms(name: str) -> None:
-    text = (BIN / name).read_text(encoding="utf-8")
+@pytest.mark.parametrize("path", SCRIPTS, ids=SCRIPT_IDS)
+def test_script_has_no_bashisms(path: Path) -> None:
+    text = path.read_text(encoding="utf-8")
     assert "[[" not in text
     assert "function " not in text
     assert "local " not in text
+
+
+def test_bootstrap_requires_uv_and_says_how_to_get_it() -> None:
+    text = BOOTSTRAP.read_text(encoding="utf-8")
+    assert "command -v uv" in text
+    assert "curl -LsSf https://astral.sh/uv/install.sh | sh" in text
+    assert ">&2" in text
+    assert "exit 1" in text
+
+
+def test_bootstrap_prepares_the_venv_under_the_runtime_home_and_execs_install() -> None:
+    text = BOOTSTRAP.read_text(encoding="utf-8")
+    assert 'home="${EXPLAIN_SELECTION_HOME:-$HOME/.claude/explain-selection}"' in text
+    assert 'chmod 700 "$home"' in text
+    assert 'uv venv --python 3.12 "$home/venv"' in text
+    assert 'uv pip install --python "$home/venv/bin/python" --quiet "$root"' in text
+    assert (
+        'exec "$home/venv/bin/python" -m explain_selection.entrypoints.cli install '
+        '--plugin-root "$root" "$@"' in text
+    )
 
 
 def test_capture_wrapper_notifies_when_no_interpreter_is_found() -> None:
@@ -68,6 +90,6 @@ def test_cli_wrapper_reports_a_missing_interpreter_on_stderr_and_exits_one() -> 
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("name", WRAPPERS)
-def test_wrapper_parses_as_posix_sh(name: str) -> None:
-    subprocess.run(["sh", "-n", str(BIN / name)], check=True, timeout=10)
+@pytest.mark.parametrize("path", SCRIPTS, ids=SCRIPT_IDS)
+def test_script_parses_as_posix_sh(path: Path) -> None:
+    subprocess.run(["sh", "-n", str(path)], check=True, timeout=10)
