@@ -2,10 +2,12 @@
 
 Subcommands: ``version``; ``sessions`` (one line per live session, of either kind);
 ``send --pid <int> [--text -|<string>]`` (post text verbatim, from stdin when ``--text`` is
-``-`` or absent); and ``install [--shortcut KEY] [--dry-run] [--plugin-root PATH]`` (lay out
+``-`` or absent); ``install [--shortcut KEY] [--dry-run] [--plugin-root PATH]`` (lay out
 the runtime home and, on macOS, register the Services entry; one ``[status] step: detail``
-line per step). Exit codes: 0 success; 1 the send failed, there is no such session or an
-install step failed, with the reason on stderr or in the step line; 2 usage.
+line per step); and ``doctor`` (one ``[status] name: detail`` line per check, an indented
+``fix:`` line after each warn or fail, then a summary). Exit codes: 0 success; 1 the send
+failed, there is no such session, an install step failed or a doctor check failed, with the
+reason on stderr or in the line; 2 usage.
 """
 
 import argparse
@@ -19,7 +21,9 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Final, TextIO, assert_never
 
-from explain_selection.domain import Pid, describe_target
+from explain_selection.domain import Pid, checks_ok, describe_target
+from explain_selection.entrypoints.cli_doctor import build_doctor_deps
+from explain_selection.entrypoints.cli_doctor import report_lines as doctor_lines
 from explain_selection.entrypoints.cli_install import (
     InstallContext,
     build_install_context,
@@ -34,6 +38,7 @@ from explain_selection.entrypoints.runtime import (
     read_stdin,
 )
 from explain_selection.services import (
+    DoctorDeps,
     NoSuchSession,
     SendDeps,
     Sent,
@@ -42,6 +47,7 @@ from explain_selection.services import (
     install_plugin,
     list_sessions,
     platform_from,
+    run_doctor,
     send_message,
 )
 
@@ -66,7 +72,7 @@ def package_version() -> str:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """The argument parser: ``version``, ``sessions``, ``send`` and ``install``."""
+    """The argument parser: ``version``, ``sessions``, ``send``, ``install`` and ``doctor``."""
     parser = argparse.ArgumentParser(
         prog=DISTRIBUTION,
         description="Send a terminal selection to a running Claude Code session.",
@@ -87,6 +93,9 @@ def build_parser() -> argparse.ArgumentParser:
         "install", help="set up the runtime home and, on macOS, the Services shortcut"
     )
     configure_install_parser(install)
+    subcommands.add_parser(
+        "doctor", help="check the install and every live session; exit 1 on a failure"
+    )
     return parser
 
 
@@ -94,14 +103,15 @@ def build_parser() -> argparse.ArgumentParser:
 class CliDeps:
     """Lazy access to the process; each builder runs only for the subcommand that needs it.
 
-    ``build_send_deps`` serves ``sessions`` and ``send``; ``build_install`` serves ``install``.
-    Both run after argv has parsed, so ``version`` and usage errors never read settings, open
-    the log or start a subprocess.
+    ``build_send_deps`` serves ``sessions`` and ``send``; ``build_install`` serves ``install``;
+    ``build_doctor`` serves ``doctor``. All run after argv has parsed, so ``version`` and usage
+    errors never read settings, open the log or start a subprocess.
     """
 
     stdin_text: Callable[[], str]
     build_send_deps: Callable[[], SendDeps]
     build_install: Callable[[], InstallContext]
+    build_doctor: Callable[[], DoctorDeps]
 
 
 def run(argv: Sequence[str], deps: CliDeps, out: TextIO, err: TextIO) -> int:
@@ -113,6 +123,8 @@ def run(argv: Sequence[str], deps: CliDeps, out: TextIO, err: TextIO) -> int:
         return EXIT_OK
     if command == "install":
         return _install(args, deps.build_install, out, err)
+    if command == "doctor":
+        return _doctor(deps.build_doctor, out, err)
     try:
         send_deps = deps.build_send_deps()
     except Exception as error:
@@ -132,6 +144,9 @@ def main() -> int:
         build_send_deps=_build_deps,
         build_install=functools.partial(
             build_install_context, platform_from(sys.platform), Path(sys.executable)
+        ),
+        build_doctor=functools.partial(
+            build_doctor_deps, platform_from(sys.platform), Path.home(), Path.cwd()
         ),
     )
     return run(sys.argv[1:], deps, sys.stdout, sys.stderr)
@@ -178,6 +193,22 @@ def _install(
     for line in report_lines(report, plan.shortcut):
         print(line, file=out)
     return EXIT_OK if report.ok else EXIT_FAILED
+
+
+def _doctor(build_doctor: Callable[[], DoctorDeps], out: TextIO, err: TextIO) -> int:
+    try:
+        doctor_deps = build_doctor()
+    except Exception as error:
+        return _could_not_start(error, err)
+    try:
+        checks = run_doctor(doctor_deps)
+    except Exception as error:
+        logger.exception("doctor failed")
+        print(f"{DISTRIBUTION}: {error}", file=err)
+        return EXIT_FAILED
+    for line in doctor_lines(checks):
+        print(line, file=out)
+    return EXIT_OK if checks_ok(checks) else EXIT_FAILED
 
 
 def _build_deps() -> SendDeps:

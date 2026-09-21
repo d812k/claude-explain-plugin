@@ -9,6 +9,7 @@ from explain_selection.entrypoints.cli_install import InstallContext, describe_s
 from explain_selection.services import (
     MANUAL_SHORTCUT_HINT,
     SERVICE_NAME,
+    DoctorDeps,
     InstallDeps,
     Platform,
     SendDeps,
@@ -26,6 +27,10 @@ def _no_stdin() -> str:
 
 def _no_deps() -> SendDeps:
     raise AssertionError("the send dependencies must not be built")
+
+
+def _no_doctor() -> DoctorDeps:
+    raise AssertionError("the doctor dependencies must not be built")
 
 
 def _context(
@@ -57,7 +62,12 @@ def _run_with(
     argv: Sequence[str], build_install: Callable[[], InstallContext]
 ) -> tuple[int, str, str]:
     out, err = io.StringIO(), io.StringIO()
-    deps = CliDeps(stdin_text=_no_stdin, build_send_deps=_no_deps, build_install=build_install)
+    deps = CliDeps(
+        stdin_text=_no_stdin,
+        build_send_deps=_no_deps,
+        build_install=build_install,
+        build_doctor=_no_doctor,
+    )
     code = run(argv, deps, out, err)
     return code, out.getvalue(), err.getvalue()
 

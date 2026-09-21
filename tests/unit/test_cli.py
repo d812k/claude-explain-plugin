@@ -8,7 +8,7 @@ import pytest
 from explain_selection.domain import Pid, SessionKind, SessionStatus
 from explain_selection.entrypoints.cli import CliDeps, format_sessions, package_version, run
 from explain_selection.entrypoints.cli_install import InstallContext
-from explain_selection.services import SendDeps
+from explain_selection.services import DoctorDeps, SendDeps
 from tests.builders import entry, session
 from tests.fakes import FakePoster, FakeProbe, FakeRegistry, FakeSessions
 
@@ -35,6 +35,10 @@ def _no_install() -> InstallContext:
     raise AssertionError("the install context must not be built")
 
 
+def _no_doctor() -> DoctorDeps:
+    raise AssertionError("the doctor dependencies must not be built")
+
+
 def _run(argv: Sequence[str], deps: SendDeps, stdin: str | None = None) -> tuple[int, str, str]:
     return _run_with(argv, lambda: deps, stdin)
 
@@ -44,7 +48,12 @@ def _run_with(
 ) -> tuple[int, str, str]:
     out, err = io.StringIO(), io.StringIO()
     stdin_text = _no_stdin if stdin is None else (lambda: stdin)
-    cli_deps = CliDeps(stdin_text=stdin_text, build_send_deps=build_deps, build_install=_no_install)
+    cli_deps = CliDeps(
+        stdin_text=stdin_text,
+        build_send_deps=build_deps,
+        build_install=_no_install,
+        build_doctor=_no_doctor,
+    )
     code = run(argv, cli_deps, out, err)
     return code, out.getvalue(), err.getvalue()
 
