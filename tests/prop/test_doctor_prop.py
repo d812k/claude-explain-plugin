@@ -11,6 +11,7 @@ from explain_selection.domain import (
     InboundPolicy,
     MacFacts,
     Pid,
+    RootSource,
     RuntimeFacts,
     SessionFacts,
     SessionKind,
@@ -22,6 +23,7 @@ from explain_selection.domain import (
 policies: st.SearchStrategy[InboundPolicy | None] = st.sampled_from(
     ["accept", "hold", "refuse", None]
 )
+root_sources: st.SearchStrategy[RootSource] = st.sampled_from(["environment", "shim", "checkout"])
 roots = st.sampled_from(["/plugins/explain-selection", "/moved/elsewhere"])
 versions = st.sampled_from(["0.1.0", "0.2.0", ""])
 template_paths = st.sampled_from(["/users/me/explain-prompt.txt", "/tmp/my prompt.txt"])
@@ -50,6 +52,7 @@ def runtime_facts(draw: st.DrawFn) -> RuntimeFacts:
         shim=draw(file_facts()),
         shim_plugin_root=draw(st.one_of(st.none(), roots)),
         plugin_root=draw(roots),
+        root_source=draw(root_sources),
         config_present=draw(st.booleans()),
         template_path=draw(template_paths),
         template=draw(file_facts()),

@@ -18,6 +18,7 @@ from explain_selection.domain import (
     LiveSession,
     MacFacts,
     RegistryEntry,
+    RootSource,
     RuntimeFacts,
     SessionFacts,
     evaluate,
@@ -41,6 +42,14 @@ _SHIM_ROOT_PREFIX: Final[str] = "EXPLAIN_SELECTION_PLUGIN_ROOT="
 
 
 @dataclass(frozen=True, slots=True)
+class PluginRoot:
+    """The plugin checkout the doctor compares against, and which record named it."""
+
+    path: Path
+    source: RootSource
+
+
+@dataclass(frozen=True, slots=True)
 class DoctorDeps:
     """Adapters plus the resolved paths and the plugin version the doctor compares against.
 
@@ -57,6 +66,7 @@ class DoctorDeps:
     mac: MacProbe | None
     home: Path
     plugin_root: Path
+    root_source: RootSource
     plugin_version: str
     template_path: Path
 
@@ -89,6 +99,7 @@ def _runtime_facts(deps: DoctorDeps) -> RuntimeFacts:
         shim=shim,
         shim_plugin_root=_shim_plugin_root(shim_text),
         plugin_root=str(deps.plugin_root),
+        root_source=deps.root_source,
         config_present=files.inspect(deps.home / CONFIG_FILE).exists,
         template_path=str(deps.template_path),
         template=template,
@@ -105,14 +116,16 @@ def _inspect_and_read(files: FileInspector, path: Path) -> tuple[FileFacts, str 
     return facts, text
 
 
-def installed_plugin_root(files: FileInspector, home: Path, fallback: Path) -> Path:
-    """The plugin checkout the installed shim was written with, else ``fallback``.
+def installed_plugin_root(files: FileInspector, home: Path, fallback: Path) -> PluginRoot:
+    """The checkout the installed shim was written with, else ``fallback`` as the ``checkout``.
 
     A package installed into the runtime venv cannot infer its checkout from ``__file__``;
     the shim the installer wrote is the record of where the plugin was at install time.
     """
     recorded = _shim_plugin_root(files.read_text(home / SHIM_FILE))
-    return fallback if recorded is None else Path(recorded)
+    if recorded is None:
+        return PluginRoot(path=fallback, source="checkout")
+    return PluginRoot(path=Path(recorded), source="shim")
 
 
 def _shim_plugin_root(text: str | None) -> str | None:
@@ -176,4 +189,11 @@ def _mac_facts(mac: MacProbe | None) -> MacFacts | None:
     )
 
 
-__all__ = ["VENV_PYTHON", "DoctorDeps", "gather_facts", "installed_plugin_root", "run_doctor"]
+__all__ = [
+    "VENV_PYTHON",
+    "DoctorDeps",
+    "PluginRoot",
+    "gather_facts",
+    "installed_plugin_root",
+    "run_doctor",
+]

@@ -78,13 +78,19 @@ class Settings(BaseSettings):
         return self.remember_target_minutes * _MS_PER_MINUTE
 
 
-def resolve_plugin_root(environ: Mapping[str, str], fallback: Path) -> Path:
-    """The plugin checkout: from the wrapper's export, else Claude Code's, else ``fallback``."""
+def exported_plugin_root(environ: Mapping[str, str]) -> Path | None:
+    """The plugin checkout the wrapper or Claude Code exported, or ``None`` when neither did."""
     for key in (PLUGIN_ROOT_VAR, "CLAUDE_PLUGIN_ROOT"):
         value = environ.get(key)
         if value:
             return Path(value)
-    return fallback
+    return None
+
+
+def resolve_plugin_root(environ: Mapping[str, str], fallback: Path) -> Path:
+    """The plugin checkout: from the wrapper's export, else Claude Code's, else ``fallback``."""
+    exported = exported_plugin_root(environ)
+    return fallback if exported is None else exported
 
 
 def load_settings(environ: Mapping[str, str], plugin_root: Path) -> Settings:
@@ -129,6 +135,7 @@ __all__ = [
     "ENV_PREFIX",
     "PLUGIN_ROOT_VAR",
     "Settings",
+    "exported_plugin_root",
     "load_settings",
     "resolve_plugin_root",
 ]

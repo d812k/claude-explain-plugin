@@ -21,6 +21,7 @@ from explain_selection.domain.doctor_facts import (
     FileFacts,
     InboundPolicy,
     MacFacts,
+    RootSource,
     RuntimeFacts,
     SessionFacts,
 )
@@ -90,6 +91,7 @@ __all__ = [
     "Pid",
     "RegistryEntry",
     "RememberedTarget",
+    "RootSource",
     "RuntimeFacts",
     "Selection",
     "SessionFacts",

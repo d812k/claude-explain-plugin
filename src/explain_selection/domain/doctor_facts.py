@@ -10,6 +10,7 @@ from typing import Literal
 from explain_selection.domain.models import Pid, SessionKind, SessionStatus
 
 type InboundPolicy = Literal["accept", "hold", "refuse"]
+type RootSource = Literal["environment", "shim", "checkout"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,7 +31,11 @@ class FileFacts:
 
 @dataclass(frozen=True, slots=True)
 class RuntimeFacts:
-    """The runtime home: venv, shim, config and prompt template, plus the plugin's version."""
+    """The runtime home: venv, shim, config and prompt template, plus the plugin's version.
+
+    ``root_source`` says which record named ``plugin_root``: the wrapper's environment export,
+    the installed shim, or the source checkout the package runs from.
+    """
 
     home: FileFacts
     venv_python: FileFacts
@@ -39,6 +44,7 @@ class RuntimeFacts:
     shim: FileFacts
     shim_plugin_root: str | None
     plugin_root: str
+    root_source: RootSource
     config_present: bool
     template_path: str
     template: FileFacts
@@ -93,6 +99,7 @@ __all__ = [
     "FileFacts",
     "InboundPolicy",
     "MacFacts",
+    "RootSource",
     "RuntimeFacts",
     "SessionFacts",
 ]

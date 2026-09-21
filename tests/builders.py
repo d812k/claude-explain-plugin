@@ -102,6 +102,7 @@ HEALTHY_RUNTIME = RuntimeFacts(
     shim=SHIM,
     shim_plugin_root=PLUGIN_ROOT,
     plugin_root=PLUGIN_ROOT,
+    root_source="environment",
     config_present=True,
     template_path=TEMPLATE_PATH,
     template=file_facts(),

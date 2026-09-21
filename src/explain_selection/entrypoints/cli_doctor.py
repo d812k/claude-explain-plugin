@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 
 from explain_selection.domain import UNREADABLE_PLUGIN_VERSION, Check
 from explain_selection.entrypoints.runtime import checkout_root
-from explain_selection.services import DoctorDeps, Platform, installed_plugin_root
+from explain_selection.services import DoctorDeps, Platform, PluginRoot, installed_plugin_root
 
 # The plugin's name in .claude-plugin/plugin.json; enabledPlugins keys start with it.
 PLUGIN_NAME: Final[str] = "explain-selection"
@@ -82,7 +82,7 @@ def build_doctor_deps(platform: Platform, user_home: Path, cwd: Path) -> DoctorD
         SystemClock,
         VenvVersionProbe,
     )
-    from explain_selection.entrypoints.settings import load_settings, resolve_plugin_root
+    from explain_selection.entrypoints.settings import exported_plugin_root, load_settings
 
     environ = dict(os.environ)
     files = LocalFileInspector()
@@ -90,8 +90,13 @@ def build_doctor_deps(platform: Platform, user_home: Path, cwd: Path) -> DoctorD
     # the root, the shim the installer wrote there is the record of it; ``checkout_root()``
     # is only right when running from a source checkout, not from the runtime venv.
     home = load_settings(environ, checkout_root()).home
-    plugin_root = resolve_plugin_root(environ, installed_plugin_root(files, home, checkout_root()))
-    settings = load_settings(environ, plugin_root)
+    exported = exported_plugin_root(environ)
+    root = (
+        PluginRoot(path=exported, source="environment")
+        if exported is not None
+        else installed_plugin_root(files, home, checkout_root())
+    )
+    settings = load_settings(environ, root.path)
     runner = SubprocessRunner()
     services_dir = user_home / "Library" / "Services"
     return DoctorDeps(
@@ -106,8 +111,9 @@ def build_doctor_deps(platform: Platform, user_home: Path, cwd: Path) -> DoctorD
         ),
         mac=MacServicesProbe(runner, services_dir) if platform == "darwin" else None,
         home=settings.home,
-        plugin_root=plugin_root,
-        plugin_version=plugin_version_from(plugin_root / MANIFEST_RELATIVE),
+        plugin_root=root.path,
+        root_source=root.source,
+        plugin_version=plugin_version_from(root.path / MANIFEST_RELATIVE),
         template_path=settings.prompt_template,
     )
 

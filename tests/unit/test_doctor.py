@@ -121,7 +121,23 @@ def test_version_fails_when_the_manifest_could_not_be_read() -> None:
     runtime = replace(HEALTHY_RUNTIME, plugin_version=UNREADABLE_PLUGIN_VERSION)
     check = _runtime_check("version", runtime)
     assert (check.status, check.detail) == ("fail", "plugin.json unreadable")
-    assert check.fix is not None
+    assert check.fix == f"the checkout at {PLUGIN_ROOT} is incomplete; reinstall it with /plugin"
+    gone = _runtime_check("version", replace(runtime, root_source="shim"))
+    assert (gone.status, gone.detail) == ("fail", "plugin.json unreadable")
+    assert gone.fix == (
+        f"the recorded plugin root {PLUGIN_ROOT} is gone: reinstall the plugin with /plugin, "
+        f"then {INSTALL_FIX}"
+    )
+
+
+def test_a_root_taken_from_the_shim_is_ok_and_says_so_in_the_shim_detail() -> None:
+    check = _runtime_check("shim", replace(HEALTHY_RUNTIME, root_source="shim"))
+    assert (check.status, check.fix) == ("ok", None)
+    assert check.detail == (
+        f"capture points at {PLUGIN_ROOT} (root taken from the shim; the plugin export was not set)"
+    )
+    plain = _by_name(evaluate(doctor_facts()), "shim")
+    assert plain.detail == f"capture points at {PLUGIN_ROOT}"
 
 
 def test_shim_fails_when_missing_or_not_executable_and_warns_when_the_plugin_moved() -> None:

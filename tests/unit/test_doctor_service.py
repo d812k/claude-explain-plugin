@@ -13,6 +13,7 @@ from explain_selection.domain import (
 from explain_selection.services import (
     ClaudeSettingsFacts,
     DoctorDeps,
+    PluginRoot,
     gather_facts,
     installed_plugin_root,
     run_doctor,
@@ -71,6 +72,7 @@ def _deps(
         mac=mac,
         home=HOME,
         plugin_root=PLUGIN_ROOT,
+        root_source="environment",
         plugin_version="0.1.0",
         template_path=TEMPLATE,
     )
@@ -84,6 +86,7 @@ def test_a_healthy_home_yields_healthy_runtime_facts() -> None:
     assert (runtime.installed_version, runtime.plugin_version) == ("0.1.0", "0.1.0")
     assert runtime.shim == SHIM
     assert (runtime.shim_plugin_root, runtime.plugin_root) == (str(PLUGIN_ROOT), str(PLUGIN_ROOT))
+    assert runtime.root_source == "environment"
     assert runtime.config_present
     assert runtime.template_path == str(TEMPLATE)
     assert runtime.template == file_facts()
@@ -129,11 +132,13 @@ def test_a_shim_or_template_that_exists_but_yields_no_text_is_marked_unreadable(
 def test_installed_plugin_root_is_the_shim_record_else_the_fallback() -> None:
     fallback = Path("/site-packages/guess")
     files = _healthy_files()
-    assert installed_plugin_root(files, HOME, fallback) == PLUGIN_ROOT
+    recorded = PluginRoot(path=PLUGIN_ROOT, source="shim")
+    guessed = PluginRoot(path=fallback, source="checkout")
+    assert installed_plugin_root(files, HOME, fallback) == recorded
     files.texts[SHIM_PATH] = "#!/bin/sh\nexec something\n"
-    assert installed_plugin_root(files, HOME, fallback) == fallback
+    assert installed_plugin_root(files, HOME, fallback) == guessed
     del files.texts[SHIM_PATH]
-    assert installed_plugin_root(files, HOME, fallback) == fallback
+    assert installed_plugin_root(files, HOME, fallback) == guessed
 
 
 def test_live_sessions_become_session_facts_with_the_registered_socket_inspected() -> None:

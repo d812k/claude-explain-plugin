@@ -15,6 +15,7 @@ from explain_selection.services.deliver import (
 from explain_selection.services.doctor import (
     VENV_PYTHON,
     DoctorDeps,
+    PluginRoot,
     gather_facts,
     installed_plugin_root,
     run_doctor,
@@ -110,6 +111,7 @@ __all__ = [
     "OpenedNewWindow",
     "Outcome",
     "Platform",
+    "PluginRoot",
     "ProcessProbe",
     "RegisterDeps",
     "RegisterResult",

@@ -112,14 +112,23 @@ def _venv(runtime: RuntimeFacts) -> Check:
 def _version(runtime: RuntimeFacts) -> Check:
     plugin, installed = runtime.plugin_version, runtime.installed_version
     if plugin == UNREADABLE_PLUGIN_VERSION:
-        fix = f"the checkout at {runtime.plugin_root} is incomplete; reinstall it with /plugin"
-        return _fail("version", "plugin.json unreadable", fix)
+        return _fail("version", "plugin.json unreadable", _unreadable_manifest_fix(runtime))
     bootstrap = f"run {runtime.plugin_root}/scripts/bootstrap.sh"
     if installed is None:
         return _fail("version", f"nothing installed in the venv; plugin is {plugin}", bootstrap)
     if installed != plugin:
         return _warn("version", f"installed {installed}, plugin is {plugin}", bootstrap)
     return _ok("version", plugin)
+
+
+def _unreadable_manifest_fix(runtime: RuntimeFacts) -> str:
+    root = runtime.plugin_root
+    if runtime.root_source == "shim":
+        return (
+            f"the recorded plugin root {root} is gone: reinstall the plugin with /plugin, "
+            f"then {INSTALL_FIX}"
+        )
+    return f"the checkout at {root} is incomplete; reinstall it with /plugin"
 
 
 def _shim(runtime: RuntimeFacts) -> Check:
@@ -135,7 +144,10 @@ def _shim(runtime: RuntimeFacts) -> Check:
     if runtime.shim_plugin_root != runtime.plugin_root:
         detail = f"capture points at {runtime.shim_plugin_root}, plugin is at {runtime.plugin_root}"
         return _warn("shim", detail, f"the plugin moved: {INSTALL_FIX}")
-    return _ok("shim", f"capture points at {runtime.plugin_root}")
+    detail = f"capture points at {runtime.plugin_root}"
+    if runtime.root_source == "shim":
+        detail += " (root taken from the shim; the plugin export was not set)"
+    return _ok("shim", detail)
 
 
 def _config(runtime: RuntimeFacts) -> Check:

@@ -84,6 +84,7 @@ def _healthy_linux(
         mac=None,
         home=HOME,
         plugin_root=PLUGIN_ROOT,
+        root_source="environment",
         plugin_version="0.1.0",
         template_path=TEMPLATE,
     )
@@ -213,6 +214,7 @@ def test_build_doctor_deps_takes_the_plugin_root_from_the_shim_when_none_is_expo
     home, plugin = _installed_runtime(tmp_path, monkeypatch)
     deps = build_doctor_deps("other", tmp_path, tmp_path)
     assert (deps.home, deps.plugin_root, deps.plugin_version) == (home, plugin, "9.9.9")
+    assert deps.root_source == "shim"
 
 
 def test_build_doctor_deps_prefers_the_wrapper_export_over_the_shim(
@@ -221,7 +223,15 @@ def test_build_doctor_deps_prefers_the_wrapper_export_over_the_shim(
     _installed_runtime(tmp_path, monkeypatch)
     monkeypatch.setenv("EXPLAIN_SELECTION_PLUGIN_ROOT", str(tmp_path / "exported"))
     deps = build_doctor_deps("other", tmp_path, tmp_path)
-    assert deps.plugin_root == tmp_path / "exported"
+    assert (deps.plugin_root, deps.root_source) == (tmp_path / "exported", "environment")
+
+
+def test_build_doctor_deps_falls_back_to_the_checkout_without_an_export_or_a_shim(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home, _ = _installed_runtime(tmp_path, monkeypatch)
+    (home / "capture").unlink()
+    assert build_doctor_deps("other", tmp_path, tmp_path).root_source == "checkout"
 
 
 def test_report_lines_format_and_count_every_status() -> None:
