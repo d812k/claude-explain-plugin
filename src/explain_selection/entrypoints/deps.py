@@ -17,6 +17,7 @@ from explain_selection.adapters import (
     OpenLinkOpener,
     OsascriptChooser,
     OsascriptFocus,
+    OsProcessProbe,
     PsTtyLookup,
     RegistryFiles,
     SystemClock,
@@ -26,7 +27,7 @@ from explain_selection.adapters import (
     UnixSocketConnector,
 )
 from explain_selection.entrypoints.settings import Settings
-from explain_selection.services import DeliverDeps, RegisterDeps
+from explain_selection.services import DeliverDeps, RegisterDeps, SendDeps
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,7 +68,29 @@ def build_deliver_deps(
         chooser=OsascriptChooser(runner),
         opener=OpenLinkOpener(runner),
         tempfiles=TempFiles(settings.temp_dir),
+        probe=OsProcessProbe(),
     )
 
 
-__all__ = ["ProcessInfo", "build_deliver_deps", "build_register_deps", "current_process"]
+def build_send_deps(
+    settings: Settings,
+    environ: Mapping[str, str],
+    process: ProcessInfo,
+    runner: CommandRunner,
+) -> SendDeps:
+    """Dependencies for the ``sessions`` and ``send`` commands."""
+    return SendDeps(
+        sessions=AgentsCli(runner),
+        registry=RegistryFiles(settings.sessions_dir),
+        poster=InboxSocketPoster(UnixSocketConnector(), environ, process.uid),
+        probe=OsProcessProbe(),
+    )
+
+
+__all__ = [
+    "ProcessInfo",
+    "build_deliver_deps",
+    "build_register_deps",
+    "build_send_deps",
+    "current_process",
+]

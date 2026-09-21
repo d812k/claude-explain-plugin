@@ -15,6 +15,7 @@ from explain_selection.adapters.osascript import (
     OsascriptFocus,
     OsascriptNotifier,
 )
+from explain_selection.adapters.process_probe import OsProcessProbe
 from explain_selection.adapters.ps import PsTtyLookup
 from explain_selection.adapters.registry_files import RegistryFiles
 from explain_selection.adapters.subprocess_runner import (
@@ -34,6 +35,7 @@ __all__ = [
     "HookStdin",
     "InboxSocketPoster",
     "OpenLinkOpener",
+    "OsProcessProbe",
     "OsascriptChooser",
     "OsascriptFocus",
     "OsascriptNotifier",

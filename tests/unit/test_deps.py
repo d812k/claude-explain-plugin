@@ -2,12 +2,18 @@
 
 from pathlib import Path
 
-from explain_selection.adapters import CommandResult, SystemClock, TmuxAwareFocus
+from explain_selection.adapters import (
+    CommandResult,
+    OsProcessProbe,
+    SystemClock,
+    TmuxAwareFocus,
+)
 from explain_selection.domain import Pid, RememberedTarget
 from explain_selection.entrypoints.deps import (
     ProcessInfo,
     build_deliver_deps,
     build_register_deps,
+    build_send_deps,
 )
 from explain_selection.entrypoints.settings import Settings
 from tests.builders import entry
@@ -42,10 +48,22 @@ def test_deliver_deps_use_the_derived_paths(tmp_path: Path) -> None:
     assert settings.last_target_file.is_file()
     assert written.parent == settings.temp_dir
     assert isinstance(deps.focus, TmuxAwareFocus)
+    assert isinstance(deps.probe, OsProcessProbe)
+
+
+def test_send_deps_wire_the_claude_cli_the_registry_dir_and_the_probe(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    runner = FakeRunner(queue=[CommandResult(returncode=0, stdout="[]", stderr="")])
+    deps = build_send_deps(settings, {}, ProcessInfo(uid=501), runner)
+    assert deps.sessions.list_live() == ()
+    assert runner.calls == [("claude", "agents", "--json")]
+    deps.registry.save(entry(7))
+    assert (settings.sessions_dir / "7.json").is_file()
+    assert isinstance(deps.probe, OsProcessProbe)
 
 
 def test_deliver_deps_list_sessions_through_the_claude_cli(tmp_path: Path) -> None:
     runner = FakeRunner(queue=[CommandResult(returncode=0, stdout="[]", stderr="")])
     deps = build_deliver_deps(_settings(tmp_path), {}, ProcessInfo(uid=501), runner)
-    assert deps.sessions.list_interactive() == ()
+    assert deps.sessions.list_live() == ()
     assert runner.calls == [("claude", "agents", "--json")]

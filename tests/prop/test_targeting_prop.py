@@ -8,8 +8,10 @@ from explain_selection.domain import (
     Choose,
     Focus,
     Inject,
+    LiveSession,
     OpenNewWindow,
     Pid,
+    RegistryEntry,
     RememberedTarget,
     SessionKind,
     SessionStatus,
@@ -28,7 +30,7 @@ panes = st.sampled_from(["%0", "%1", "%2"])
 
 
 @st.composite
-def targets(draw: st.DrawFn) -> tuple[Target, ...]:
+def sessions_and_entries(draw: st.DrawFn) -> tuple[list[LiveSession], list[RegistryEntry]]:
     chosen = draw(st.lists(pids, unique=True, max_size=6))
     sessions = [
         session(
@@ -49,6 +51,12 @@ def targets(draw: st.DrawFn) -> tuple[Target, ...]:
         for pid in chosen
         if draw(st.booleans())
     ]
+    return sessions, entries
+
+
+@st.composite
+def targets(draw: st.DrawFn) -> tuple[Target, ...]:
+    sessions, entries = draw(sessions_and_entries())
     return join_targets(sessions, entries)
 
 
@@ -100,3 +108,14 @@ def test_decision_does_not_depend_on_candidate_order(
 @given(ts=targets(), focus=focuses)
 def test_only_interactive_sessions_become_targets(ts: tuple[Target, ...], focus: Focus) -> None:
     assert all(t.session.kind is SessionKind.INTERACTIVE for t in ts)
+
+
+@pytest.mark.prop
+@given(drawn=sessions_and_entries())
+def test_including_background_makes_every_live_session_a_target(
+    drawn: tuple[list[LiveSession], list[RegistryEntry]],
+) -> None:
+    sessions, entries = drawn
+    ts = join_targets(sessions, entries, include_background=True)
+    assert [t.session for t in ts] == sorted(sessions, key=lambda s: s.pid)
+    assert all(t.entry is None or t.entry.pid == t.session.pid for t in ts)

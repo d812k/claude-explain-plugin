@@ -11,6 +11,8 @@ from explain_selection.domain import (
     PickReason,
     Pid,
     RememberedTarget,
+    SessionKind,
+    clean_selection,
     join_targets,
 )
 from explain_selection.services import (
@@ -32,6 +34,7 @@ from tests.fakes import (
     FakeMemory,
     FakeOpener,
     FakePoster,
+    FakeProbe,
     FakeRegistry,
     FakeRunner,
     FakeSessions,
@@ -68,6 +71,7 @@ def _deps() -> DeliverDeps:
         chooser=FakeChooser(),
         opener=FakeOpener(),
         tempfiles=FakeTempFiles(),
+        probe=FakeProbe(),
     )
 
 
@@ -105,19 +109,57 @@ def test_no_live_session_opens_a_new_window() -> None:
     result = deliver_selection("boom", _policy(), deps)
     assert isinstance(result, OpenedNewWindow)
     assert result.used_tempfile is False
-    assert result.truncated is False
+    assert result.link_truncated is False
     url = opener.opened[0]
     assert url.startswith("claude-cli://open?cwd=")
     assert "explain-selection%3Aexplain" in url
 
 
-def test_long_selection_with_truncate_policy_marks_truncated() -> None:
+def test_a_background_session_is_not_a_hotkey_target_so_a_new_window_opens() -> None:
+    opener, poster = FakeOpener(), FakePoster()
+    background = FakeSessions((session(10, kind=SessionKind.BACKGROUND),))
+    deps = replace(_deps(), sessions=background, opener=opener, poster=poster)
+    result = deliver_selection("boom", _policy(), deps)
+    assert isinstance(result, OpenedNewWindow)
+    assert poster.posts == []
+    assert len(opener.opened) == 1
+
+
+def test_long_selection_with_truncate_policy_marks_the_link_truncated() -> None:
     opener = FakeOpener()
     deps = replace(_deps(), opener=opener)
     result = deliver_selection("z" * 6000, _policy(max_chars=6000), deps)
     assert isinstance(result, OpenedNewWindow)
-    assert result.truncated is True
+    assert result.link_truncated is True
+    assert result.truncated is False
     assert result.used_tempfile is False
+
+
+def test_injection_reports_how_much_of_the_selection_survived_cleaning() -> None:
+    deps = replace(_deps(), sessions=FakeSessions((session(10),)))
+    result = deliver_selection("abcdefgh", _policy(max_chars=5), deps)
+    assert isinstance(result, Injected)
+    assert result.truncated is True
+    assert result.original_chars == 8
+    assert result.chars == len(clean_selection("abcdefgh", 5).text)
+
+
+def test_injection_of_a_short_selection_is_not_truncated() -> None:
+    deps = replace(_deps(), sessions=FakeSessions((session(10),)))
+    result = deliver_selection("abc", _policy(max_chars=5), deps)
+    assert isinstance(result, Injected)
+    assert result.truncated is False
+    assert result.original_chars == 3
+    assert result.chars == 3
+
+
+def test_new_window_reports_selection_truncation_separately_from_the_link() -> None:
+    result = deliver_selection("abcdefgh", _policy(max_chars=5), _deps())
+    assert isinstance(result, OpenedNewWindow)
+    assert result.truncated is True
+    assert result.original_chars == 8
+    assert result.chars == len(clean_selection("abcdefgh", 5).text)
+    assert result.link_truncated is False
 
 
 def test_long_selection_with_tempfile_policy_references_the_file() -> None:
@@ -241,6 +283,15 @@ def test_stale_registry_entries_are_pruned_against_live_sessions() -> None:
     deliver_selection("x", _policy(), deps)
     assert Pid(999) in registry.deleted
     assert Pid(10) not in registry.deleted
+
+
+def test_an_unlisted_but_alive_pid_keeps_its_entry_while_a_dead_one_is_pruned() -> None:
+    registry = FakeRegistry(entries={Pid(10): entry(10), Pid(20): entry(20), Pid(999): entry(999)})
+    probe = FakeProbe(alive={Pid(20)})
+    deps = replace(_deps(), sessions=FakeSessions((session(10),)), registry=registry, probe=probe)
+    deliver_selection("x", _policy(), deps)
+    assert registry.deleted == [Pid(999)]
+    assert sorted(probe.asked) == [Pid(20), Pid(999)]
 
 
 def test_mode_a_prompt_uses_the_explain_skill_not_the_template() -> None:

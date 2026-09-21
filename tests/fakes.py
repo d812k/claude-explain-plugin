@@ -12,7 +12,7 @@ from explain_selection.domain import (
     RememberedTarget,
     Target,
 )
-from explain_selection.errors import InboxUnavailableError, SubprocessError
+from explain_selection.errors import AgentsQueryError, InboxUnavailableError, SubprocessError
 from explain_selection.services import InboxAddress
 
 
@@ -28,11 +28,14 @@ class FakeClock:
 
 @dataclass(slots=True)
 class FakeSessions:
-    """Returns a fixed list of live sessions."""
+    """Returns a fixed list of live sessions; can be told to fail like a broken ``claude``."""
 
     sessions: tuple[LiveSession, ...] = ()
+    fail: bool = False
 
-    def list_interactive(self) -> tuple[LiveSession, ...]:
+    def list_live(self) -> tuple[LiveSession, ...]:
+        if self.fail:
+            raise AgentsQueryError("claude agents failed")
         return self.sessions
 
 
@@ -52,6 +55,18 @@ class FakeRegistry:
 
     def read_all(self) -> tuple[RegistryEntry, ...]:
         return tuple(self.entries.values())
+
+
+@dataclass(slots=True)
+class FakeProbe:
+    """Reports the pids in ``alive`` as running; records every pid it was asked about."""
+
+    alive: set[Pid] = field(default_factory=set[Pid])
+    asked: list[Pid] = field(default_factory=list[Pid])
+
+    def is_alive(self, pid: Pid) -> bool:
+        self.asked.append(pid)
+        return pid in self.alive
 
 
 @dataclass(slots=True)
