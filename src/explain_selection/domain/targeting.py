@@ -136,7 +136,13 @@ def select_target(
         return Inject(idle[0], PickReason.ONLY_IDLE)
     if idle:
         candidates = idle
-    return Choose(tuple(sorted(candidates, key=_display_order)))
+    return Choose(tuple(sorted(candidates, key=chooser_order)))
+
+
+def chooser_order(target: Target) -> tuple[int, str, str, int]:
+    """The chooser's sort key: idle, busy, waiting; then name, working directory and pid."""
+    session = target.session
+    return (_STATUS_RANK[session.status], session.name or "", session.cwd, session.pid)
 
 
 def describe_target(target: Target) -> str:
@@ -164,11 +170,6 @@ def _pid_of(session: LiveSession) -> int:
     return session.pid
 
 
-def _display_order(target: Target) -> tuple[int, str, str, int]:
-    session = target.session
-    return (_STATUS_RANK[session.status], session.name or "", session.cwd, session.pid)
-
-
 __all__ = [
     "Choose",
     "Decision",
@@ -178,6 +179,7 @@ __all__ = [
     "PickReason",
     "RememberedTarget",
     "Target",
+    "chooser_order",
     "describe_target",
     "join_targets",
     "select_target",

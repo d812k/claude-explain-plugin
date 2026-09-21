@@ -42,3 +42,11 @@ is unchanged.
   gains the kind column.
 - Hooks, the registry file format, the plugin manifest and the hotkey behaviour are
   unchanged.
+
+## Amendment 2026-09-21: chooser_order
+
+- The domain exports `chooser_order(target: Target) -> tuple[int, str, str, int]`, the
+  sort key of the session chooser: status rank (idle, busy, waiting), then name, cwd
+  and pid.
+- `select_target` sorts `Choose.options` with it and `list_sessions` sorts its summaries
+  with it, so the services layer no longer keeps its own copy of the status ranking.

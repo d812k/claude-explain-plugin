@@ -2,7 +2,14 @@
 
 from dataclasses import fields
 
-from explain_selection.domain import LiveSession, Pid, SessionKind, SessionStatus
+from explain_selection.domain import (
+    LiveSession,
+    Pid,
+    SessionKind,
+    SessionStatus,
+    chooser_order,
+    join_targets,
+)
 from explain_selection.services import SendDeps, SessionSummary, list_sessions
 from tests.builders import FAKE_TOKEN, entry, session
 from tests.fakes import FakePoster, FakeProbe, FakeRegistry, FakeSessions
@@ -50,6 +57,19 @@ def test_order_is_idle_busy_waiting_then_name_cwd_pid() -> None:
         session(6, name="b", cwd="/w"),
     )
     assert [s.pid for s in list_sessions(deps)] == [5, 4, 6, 3, 2, 1]
+
+
+def test_order_is_the_domain_chooser_order() -> None:
+    live = (
+        session(1, status=SessionStatus.WAITING, name="a"),
+        session(2, status=SessionStatus.BUSY, name="z"),
+        session(3, name="b", cwd="/x"),
+        session(4, name="b", cwd="/w", kind=SessionKind.BACKGROUND),
+        session(5, name="a"),
+    )
+    targets = join_targets(live, (), include_background=True)
+    expected = [t.session.pid for t in sorted(targets, key=chooser_order)]
+    assert [s.pid for s in list_sessions(_deps(*live))] == expected
 
 
 def test_summaries_carry_no_token() -> None:
