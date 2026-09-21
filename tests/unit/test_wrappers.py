@@ -1,5 +1,6 @@
 """The bin/ wrappers are executable POSIX sh scripts that exec their Python entrypoint."""
 
+import os
 import stat
 import subprocess
 from pathlib import Path
@@ -75,6 +76,21 @@ def test_bootstrap_prepares_the_venv_under_the_runtime_home_and_execs_install() 
     )
 
 
+def test_bootstrap_dry_run_without_a_venv_only_prints_the_plan() -> None:
+    text = BOOTSTRAP.read_text(encoding="utf-8")
+    assert '"$arg" = "--dry-run"' in text
+    assert "[planned] venv: would create $home/venv with uv venv --python 3.12" in text
+    assert "[planned] package: would install $root into the venv" in text
+    assert "[planned] install: would run explain-selection install --dry-run" in text
+    assert text.index("[planned] venv") < text.index("command -v uv")
+
+
+def test_cli_wrapper_usage_lists_every_subcommand() -> None:
+    usage = "\n".join((BIN / CLI_WRAPPER).read_text(encoding="utf-8").splitlines()[1:3])
+    for command in ("version", "sessions", "send", "install", "doctor"):
+        assert command in usage
+
+
 def test_capture_wrapper_notifies_when_no_interpreter_is_found() -> None:
     text = (BIN / "explain-selection-capture").read_text(encoding="utf-8")
     assert "osascript -e 'display notification" in text
@@ -93,3 +109,24 @@ def test_cli_wrapper_reports_a_missing_interpreter_on_stderr_and_exits_one() -> 
 @pytest.mark.parametrize("path", SCRIPTS, ids=SCRIPT_IDS)
 def test_script_parses_as_posix_sh(path: Path) -> None:
     subprocess.run(["sh", "-n", str(path)], check=True, timeout=10)
+
+
+@pytest.mark.slow
+def test_bootstrap_dry_run_creates_nothing_when_there_is_no_venv(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    env = {**os.environ, "EXPLAIN_SELECTION_HOME": str(home)}
+    result = subprocess.run(
+        ["sh", str(BOOTSTRAP), "--dry-run"],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    assert (result.returncode, result.stderr) == (0, "")
+    assert result.stdout.splitlines() == [
+        f"[planned] venv: would create {home}/venv with uv venv --python 3.12",
+        f"[planned] package: would install {REPO} into the venv",
+        "[planned] install: would run explain-selection install --dry-run",
+    ]
+    assert not home.exists()
