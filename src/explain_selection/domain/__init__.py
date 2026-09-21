@@ -6,14 +6,14 @@ from explain_selection.domain.deeplink import (
     build_deep_link,
     fit_prompt_for_deep_link,
 )
-from explain_selection.domain.doctor import (
+from explain_selection.domain.doctor import evaluate
+from explain_selection.domain.doctor_checks import (
     INSTALL_FIX,
     MACOS_ONLY,
     UNREADABLE_PLUGIN_VERSION,
     Check,
     CheckStatus,
     checks_ok,
-    evaluate,
 )
 from explain_selection.domain.doctor_facts import (
     ClaudeFacts,

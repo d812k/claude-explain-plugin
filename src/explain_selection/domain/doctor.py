@@ -5,10 +5,21 @@ Nothing here touches a file, a socket or a process. The services build a
 the CLI prints them. Every ``warn`` or ``fail`` check names the exact fix.
 """
 
-from collections.abc import Iterable
-from dataclasses import dataclass
-from typing import Final, Literal
+from typing import Final
 
+from explain_selection.domain.doctor_checks import (
+    INSTALL_FIX,
+    PERMISSIONS_FIX,
+    SERVICE_NAME,
+    SHORTCUT_SETTINGS_PATH,
+    UNREADABLE_PLUGIN_VERSION,
+    Check,
+    fail,
+    ok,
+    skip,
+    unreadable,
+    warn,
+)
 from explain_selection.domain.doctor_facts import (
     ClaudeFacts,
     DoctorFacts,
@@ -19,29 +30,9 @@ from explain_selection.domain.doctor_facts import (
 )
 from explain_selection.domain.models import SessionKind
 
-type CheckStatus = Literal["ok", "warn", "fail", "skip"]
-
-UNREADABLE_PLUGIN_VERSION: Final[str] = ""
-INSTALL_FIX: Final[str] = "run /explain-selection:install"
-MACOS_ONLY: Final[str] = "macOS only"
-_SERVICE_NAME: Final[str] = "Explain selection"
 _PRIVATE_DIR_MODE: Final[int] = 0o700
 _OTHER_USER_BITS: Final[int] = 0o077
 _MS_PER_MINUTE: Final[int] = 60_000
-_SHORTCUT_FIX: Final[str] = (
-    f"System Settings > Keyboard > Keyboard Shortcuts > Services > Text > {_SERVICE_NAME}"
-)
-_PERMISSIONS_FIX: Final[str] = "check ownership and permissions of"
-
-
-@dataclass(frozen=True, slots=True)
-class Check:
-    """One verdict; ``fix`` is set exactly when the status is ``warn`` or ``fail``."""
-
-    name: str
-    status: CheckStatus
-    detail: str
-    fix: str | None
 
 
 def evaluate(facts: DoctorFacts) -> tuple[Check, ...]:
@@ -64,62 +55,37 @@ def evaluate(facts: DoctorFacts) -> tuple[Check, ...]:
     )
 
 
-def checks_ok(checks: Iterable[Check]) -> bool:
-    """``True`` unless some check failed; warnings and skips are fine."""
-    return all(check.status != "fail" for check in checks)
-
-
-def _ok(name: str, detail: str) -> Check:
-    return Check(name=name, status="ok", detail=detail, fix=None)
-
-
-def _warn(name: str, detail: str, fix: str) -> Check:
-    return Check(name=name, status="warn", detail=detail, fix=fix)
-
-
-def _fail(name: str, detail: str, fix: str) -> Check:
-    return Check(name=name, status="fail", detail=detail, fix=fix)
-
-
-def _skip(name: str) -> Check:
-    return Check(name=name, status="skip", detail=MACOS_ONLY, fix=None)
-
-
-def _unreadable(name: str, what: str, path: str) -> Check:
-    return _fail(name, f"{what} exists but cannot be read", f"{_PERMISSIONS_FIX} {path}")
-
-
 def _home(runtime: RuntimeFacts) -> Check:
     home = runtime.home
     if not home.exists:
-        return _fail("home", "missing", INSTALL_FIX)
+        return fail("home", "missing", INSTALL_FIX)
     if not home.readable:
-        return _unreadable("home", "home", "<home>")
+        return unreadable("home", "home", "<home>")
     if not home.is_dir:
-        return _fail("home", "not a directory", INSTALL_FIX)
+        return fail("home", "not a directory", INSTALL_FIX)
     if home.mode != _PRIVATE_DIR_MODE:
-        return _warn("home", f"mode {_octal(home.mode)}, expected 0700", INSTALL_FIX)
-    return _ok("home", "mode 0700")
+        return warn("home", f"mode {_octal(home.mode)}, expected 0700", INSTALL_FIX)
+    return ok("home", "mode 0700")
 
 
 def _venv(runtime: RuntimeFacts) -> Check:
     if not runtime.venv_python.exists:
-        return _fail("venv", "venv/bin/python missing", INSTALL_FIX)
+        return fail("venv", "venv/bin/python missing", INSTALL_FIX)
     if not runtime.venv_python.readable:
-        return _unreadable("venv", "venv/bin/python", "<home>/venv/bin/python")
-    return _ok("venv", "venv/bin/python present")
+        return unreadable("venv", "venv/bin/python", "<home>/venv/bin/python")
+    return ok("venv", "venv/bin/python present")
 
 
 def _version(runtime: RuntimeFacts) -> Check:
     plugin, installed = runtime.plugin_version, runtime.installed_version
     if plugin == UNREADABLE_PLUGIN_VERSION:
-        return _fail("version", "plugin.json unreadable", _unreadable_manifest_fix(runtime))
+        return fail("version", "plugin.json unreadable", _unreadable_manifest_fix(runtime))
     bootstrap = f"run {runtime.plugin_root}/scripts/bootstrap.sh"
     if installed is None:
-        return _fail("version", f"nothing installed in the venv; plugin is {plugin}", bootstrap)
+        return fail("version", f"nothing installed in the venv; plugin is {plugin}", bootstrap)
     if installed != plugin:
-        return _warn("version", f"installed {installed}, plugin is {plugin}", bootstrap)
-    return _ok("version", plugin)
+        return warn("version", f"installed {installed}, plugin is {plugin}", bootstrap)
+    return ok("version", plugin)
 
 
 def _unreadable_manifest_fix(runtime: RuntimeFacts) -> str:
@@ -135,61 +101,61 @@ def _unreadable_manifest_fix(runtime: RuntimeFacts) -> str:
 def _shim(runtime: RuntimeFacts) -> Check:
     shim = runtime.shim
     if not shim.exists:
-        return _fail("shim", "capture missing", INSTALL_FIX)
+        return fail("shim", "capture missing", INSTALL_FIX)
     if not shim.readable:
-        return _unreadable("shim", "capture", "<home>/capture")
+        return unreadable("shim", "capture", "<home>/capture")
     if not shim.is_executable:
-        return _fail("shim", "capture is not executable", INSTALL_FIX)
+        return fail("shim", "capture is not executable", INSTALL_FIX)
     if runtime.shim_plugin_root is None:
-        return _fail("shim", "capture names no plugin root", INSTALL_FIX)
+        return fail("shim", "capture names no plugin root", INSTALL_FIX)
     if runtime.shim_plugin_root != runtime.plugin_root:
         detail = f"capture points at {runtime.shim_plugin_root}, plugin is at {runtime.plugin_root}"
-        return _warn("shim", detail, f"the plugin moved: {INSTALL_FIX}")
+        return warn("shim", detail, f"the plugin moved: {INSTALL_FIX}")
     detail = f"capture points at {runtime.plugin_root}"
     if runtime.root_source == "shim":
         detail += " (root taken from the shim; the plugin export was not set)"
-    return _ok("shim", detail)
+    return ok("shim", detail)
 
 
 def _config(runtime: RuntimeFacts) -> Check:
     if not runtime.config_present:
-        return _warn(
+        return warn(
             "config", "config.env missing; defaults apply", f"{INSTALL_FIX} to write config.env"
         )
-    return _ok("config", "config.env present")
+    return ok("config", "config.env present")
 
 
 def _template(runtime: RuntimeFacts) -> Check:
     path = runtime.template_path
     if not runtime.template.exists:
-        return _fail("template", f"prompt template missing at {path}", INSTALL_FIX)
+        return fail("template", f"prompt template missing at {path}", INSTALL_FIX)
     if not runtime.template.readable:
-        return _unreadable("template", "prompt template", path)
+        return unreadable("template", "prompt template", path)
     if not runtime.template_has_placeholder:
         fix = f"add {{text}} to {path}, or delete the file and rerun /explain-selection:install"
-        return _fail("template", f"{path} has no {{text}} placeholder", fix)
-    return _ok("template", f"{path} has the {{text}} placeholder")
+        return fail("template", f"{path} has no {{text}} placeholder", fix)
+    return ok("template", f"{path} has the {{text}} placeholder")
 
 
 def _plugin_enabled(claude: ClaudeFacts) -> Check:
     if not claude.plugin_enabled:
         fix = "enable the plugin with /plugin so the hooks register sessions"
-        return _warn("plugin-enabled", "not in enabledPlugins", fix)
-    return _ok("plugin-enabled", "listed in enabledPlugins")
+        return warn("plugin-enabled", "not in enabledPlugins", fix)
+    return ok("plugin-enabled", "listed in enabledPlugins")
 
 
 def _settings_files(claude: ClaudeFacts) -> Check:
     if claude.unreadable_settings:
         files = ", ".join(claude.unreadable_settings)
-        return _warn("settings-files", f"skipped {files}", f"fix the JSON in {files}")
-    return _ok("settings-files", "all readable")
+        return warn("settings-files", f"skipped {files}", f"fix the JSON in {files}")
+    return ok("settings-files", "all readable")
 
 
 def _agents(claude: ClaudeFacts) -> Check:
     if claude.agents_error is not None:
         fix = "check that claude is on PATH and claude agents --json works"
-        return _fail("agents", claude.agents_error or "claude agents --json failed", fix)
-    return _ok("agents", f"{len(claude.sessions)} live sessions")
+        return fail("agents", claude.agents_error or "claude agents --json failed", fix)
+    return ok("agents", f"{len(claude.sessions)} live sessions")
 
 
 def _session(session: SessionFacts) -> Check:
@@ -201,17 +167,17 @@ def _session(session: SessionFacts) -> Check:
                 "restart this session with the plugin enabled; token-less messages are held by "
                 "sessions that bypass permission prompts"
             )
-            return _warn(name, detail, fix)
-        return _ok(name, detail)
+            return warn(name, detail, fix)
+        return ok(name, detail)
     socket = session.socket
     if socket is not None and socket.exists and not socket.readable:
-        return _fail(name, detail, f"{_PERMISSIONS_FIX} the inbox socket")
+        return fail(name, detail, f"{PERMISSIONS_FIX} the inbox socket")
     if socket is None or not _socket_ok(socket):
-        return _fail(name, detail, "the session's inbox socket is gone; restart it")
+        return fail(name, detail, "the session's inbox socket is gone; restart it")
     if socket.mode is not None and socket.mode & _OTHER_USER_BITS:
         fix = "socket is accessible to other users; restart the session so it is recreated"
-        return _warn(name, detail, fix)
-    return _ok(name, detail)
+        return warn(name, detail, fix)
+    return ok(name, detail)
 
 
 def _session_detail(session: SessionFacts) -> str:
@@ -245,64 +211,56 @@ def _stale_entries(claude: ClaudeFacts) -> Check:
     if count > 0:
         fix = "capture prunes them; or delete <home>/sessions/<pid>.json for dead pids"
         noun = "entry" if count == 1 else "entries"
-        return _warn("stale-entries", f"{count} {noun} for dead sessions", fix)
-    return _ok("stale-entries", "none")
+        return warn("stale-entries", f"{count} {noun} for dead sessions", fix)
+    return ok("stale-entries", "none")
 
 
 def _inbound_policy(claude: ClaudeFacts) -> Check:
     policy = claude.cross_session_inbound
     if policy == "refuse":
         fix = "set crossSessionInbound to accept in ~/.claude/settings.json"
-        return _fail("inbound-policy", "crossSessionInbound is refuse", fix)
+        return fail("inbound-policy", "crossSessionInbound is refuse", fix)
     if policy == "hold":
         fix = "set crossSessionInbound to accept, or approve each message"
-        return _warn("inbound-policy", "crossSessionInbound is hold", fix)
+        return warn("inbound-policy", "crossSessionInbound is hold", fix)
     if policy is None:
-        return _ok("inbound-policy", "default: token-bearing messages are accepted")
-    return _ok("inbound-policy", policy)
+        return ok("inbound-policy", "default: token-bearing messages are accepted")
+    return ok("inbound-policy", policy)
 
 
 def _mac(mac: MacFacts | None) -> tuple[Check, Check, Check]:
     if mac is None:
-        return _skip("services-bundle"), _skip("shortcut"), _skip("osascript")
+        return skip("services-bundle"), skip("shortcut"), skip("osascript")
     return _bundle(mac), _shortcut(mac), _osascript(mac)
 
 
 def _bundle(mac: MacFacts) -> Check:
-    bundle = f"{_SERVICE_NAME}.workflow"
+    bundle = f"{SERVICE_NAME}.workflow"
     if not mac.bundle.exists:
-        return _fail("services-bundle", f"{bundle} missing", INSTALL_FIX)
+        return fail("services-bundle", f"{bundle} missing", INSTALL_FIX)
     if not mac.bundle.readable:
-        return _unreadable("services-bundle", bundle, f"~/Library/Services/{bundle}")
-    return _ok("services-bundle", f"{bundle} installed")
+        return unreadable("services-bundle", bundle, f"~/Library/Services/{bundle}")
+    return ok("services-bundle", f"{bundle} installed")
 
 
 def _shortcut(mac: MacFacts) -> Check:
     status = mac.shortcut_status
     if status is None:
-        return _fail("shortcut", "could not read the Services status", _SHORTCUT_FIX)
-    if _SERVICE_NAME not in status:
-        return _fail("shortcut", f"{_SERVICE_NAME} has no Services shortcut", _SHORTCUT_FIX)
-    return _ok("shortcut", f"{_SERVICE_NAME} is in the Services menu")
+        return fail("shortcut", "could not read the Services status", SHORTCUT_SETTINGS_PATH)
+    if SERVICE_NAME not in status:
+        return fail("shortcut", f"{SERVICE_NAME} has no Services shortcut", SHORTCUT_SETTINGS_PATH)
+    return ok("shortcut", f"{SERVICE_NAME} is in the Services menu")
 
 
 def _osascript(mac: MacFacts) -> Check:
     if not mac.osascript_found:
         fix = "osascript ships with macOS; check PATH includes /usr/bin"
-        return _fail("osascript", "not found on PATH", fix)
-    return _ok("osascript", "found")
+        return fail("osascript", "not found on PATH", fix)
+    return ok("osascript", "found")
 
 
 def _octal(mode: int | None) -> str:
     return "unknown" if mode is None else f"{mode:04o}"
 
 
-__all__ = [
-    "INSTALL_FIX",
-    "MACOS_ONLY",
-    "UNREADABLE_PLUGIN_VERSION",
-    "Check",
-    "CheckStatus",
-    "checks_ok",
-    "evaluate",
-]
+__all__ = ["evaluate"]
