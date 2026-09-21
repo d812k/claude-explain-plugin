@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>AMApplicationBuild</key>
+    <string>523</string>
+    <key>AMApplicationVersion</key>
+    <string>2.10</string>
+    <key>AMDocumentVersion</key>
+    <string>2</string>
+    <key>actions</key>
+    <array>
+        <dict>
+            <key>action</key>
+            <dict>
+                <key>AMActionVersion</key>
+                <string>2.0.3</string>
+                <key>ActionBundlePath</key>
+                <string>/System/Library/Automator/Run Shell Script.action</string>
+                <key>ActionName</key>
+                <string>Run Shell Script</string>
+                <key>ActionParameters</key>
+                <dict>
+                    <key>COMMAND_STRING</key>
+                    <string>exec "$HOME/.claude/explain-selection/capture" --text -</string>
+                    <key>CheckedForUserDefaultShell</key>
+                    <true/>
+                    <key>inputMethod</key>
+                    <integer>0</integer>
+                    <key>shell</key>
+                    <string>/bin/sh</string>
+                    <key>source</key>
+                    <string></string>
+                </dict>
+                <key>BundleIdentifier</key>
+                <string>com.apple.RunShellScript</string>
+                <key>CFBundleVersion</key>
+                <string>2.0.3</string>
+                <key>Class Name</key>
+                <string>RunShellScriptAction</string>
+                <key>InputUUID</key>
+                <string>0E9B1D0A-0B7E-4C4E-9D9C-1B6C2A7E5F01</string>
+                <key>OutputUUID</key>
+                <string>3F5C8A2B-6D1E-4F7A-8B9C-2D4E6F8A0B02</string>
+                <key>UUID</key>
+                <string>7A1B2C3D-4E5F-4A6B-8C9D-0E1F2A3B4C03</string>
+            </dict>
+        </dict>
+    </array>
+    <key>workflowMetaData</key>
+    <dict>
+        <key>inputTypeIdentifier</key>
+        <string>com.apple.Automator.text</string>
+        <key>serviceInputTypeIdentifier</key>
+        <string>com.apple.Automator.text</string>
+        <key>serviceOutputTypeIdentifier</key>
+        <string>com.apple.Automator.nothing</string>
+        <key>serviceProcessesInput</key>
+        <integer>0</integer>
+        <key>workflowTypeIdentifier</key>
+        <string>com.apple.Automator.servicesMenu</string>
+        <key>presentationMode</key>
+        <integer>15</integer>
+        <key>backgroundColorName</key>
+        <string>background</string>
+        <key>useAutomaticInputType</key>
+        <integer>0</integer>
+    </dict>
+</dict>
+</plist>
