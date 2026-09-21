@@ -38,7 +38,7 @@ class Sent:
 
 @dataclass(frozen=True, slots=True)
 class NoSuchSession:
-    """No live interactive session has this pid."""
+    """No live session, interactive or background, has this pid."""
 
     pid: Pid
 
@@ -55,10 +55,13 @@ SendResult = Sent | NoSuchSession | Unavailable
 
 
 def send_message(pid: Pid, content: str, deps: SendDeps) -> SendResult:
-    """Post ``content`` verbatim into the live interactive session ``pid``."""
-    matches = [
-        t for t in live_targets(deps.sessions, deps.registry, deps.probe) if t.session.pid == pid
-    ]
+    """Post ``content`` verbatim into the live session ``pid``, background sessions included.
+
+    The user names the target explicitly, so unlike the hotkey path a background session
+    (for example a Claude Code background job) is a legitimate recipient.
+    """
+    targets = live_targets(deps.sessions, deps.registry, deps.probe, include_background=True)
+    matches = [t for t in targets if t.session.pid == pid]
     if not matches:
         return NoSuchSession(pid)
     target = matches[0]

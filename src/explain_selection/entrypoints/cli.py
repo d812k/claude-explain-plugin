@@ -1,6 +1,6 @@
 """The ``explain-selection`` command line; the only module allowed to print.
 
-Subcommands: ``version``; ``sessions`` (one line per live interactive session); and
+Subcommands: ``version``; ``sessions`` (one line per live session, of either kind); and
 ``send --pid <int> [--text -|<string>]`` (post text verbatim, from stdin when ``--text`` is
 ``-`` or absent). Exit codes: 0 success; 1 the send failed or there is no such session, with
 the reason on stderr; 2 usage.
@@ -40,7 +40,7 @@ SEND_USAGE: Final[str] = "usage: explain-selection send --pid <int> [--text -|<s
 EXIT_OK: Final[int] = 0
 EXIT_FAILED: Final[int] = 1
 EXIT_USAGE: Final[int] = 2
-_ALIGNED_COLUMNS: Final[int] = 4
+_ALIGNED_COLUMNS: Final[int] = 5
 
 
 def package_version() -> str:
@@ -59,7 +59,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subcommands = parser.add_subparsers(dest="command", required=True)
     subcommands.add_parser("version", help="print the installed package version")
-    subcommands.add_parser("sessions", help="list the live interactive Claude Code sessions")
+    subcommands.add_parser("sessions", help="list the live Claude Code sessions of either kind")
     send = subcommands.add_parser("send", help="post text verbatim into one session's inbox")
     send.add_argument(
         "--pid", type=int, required=True, help="pid of the target session (see `sessions`)"
@@ -119,11 +119,12 @@ def main() -> int:
 
 
 def format_sessions(summaries: Sequence[SessionSummary]) -> list[str]:
-    """``pid  status  registered|unregistered  label  cwd``, the first four columns aligned."""
+    """``pid  status  kind  registered|unregistered  label  cwd``, all but ``cwd`` aligned."""
     rows = [
         (
             str(s.pid),
             s.status.value,
+            s.kind.value,
             "registered" if s.registered else "unregistered",
             s.label,
             s.cwd,
@@ -163,7 +164,7 @@ def _send(pid: Pid, content: str, deps: SendDeps, out: TextIO, err: TextIO) -> i
             return EXIT_OK
         case NoSuchSession(pid=missing):
             print(
-                f"{DISTRIBUTION}: no live interactive session with pid {missing}; "
+                f"{DISTRIBUTION}: no live session with pid {missing}; "
                 f"run `{DISTRIBUTION} sessions` to list them",
                 file=err,
             )

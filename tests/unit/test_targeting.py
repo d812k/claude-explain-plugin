@@ -41,6 +41,19 @@ def test_join_drops_background_sessions_and_stale_entries() -> None:
     assert targets[0].entry == entry(10, tty="ttys005")
 
 
+def test_join_keeps_background_sessions_when_asked_to() -> None:
+    targets = join_targets(
+        [session(20, kind=SessionKind.BACKGROUND), session(10)],
+        [entry(20), entry(99)],
+        include_background=True,
+    )
+    assert [(t.session.pid, t.session.kind) for t in targets] == [
+        (10, SessionKind.INTERACTIVE),
+        (20, SessionKind.BACKGROUND),
+    ]
+    assert [t.entry for t in targets] == [None, entry(20)]
+
+
 def test_join_leaves_entry_empty_when_the_hook_never_ran() -> None:
     targets = join_targets([session(10)], [])
     assert targets == (Target(session(10), None),)

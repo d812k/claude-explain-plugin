@@ -33,7 +33,7 @@ class FakeSessions:
     sessions: tuple[LiveSession, ...] = ()
     fail: bool = False
 
-    def list_interactive(self) -> tuple[LiveSession, ...]:
+    def list_live(self) -> tuple[LiveSession, ...]:
         if self.fail:
             raise AgentsQueryError("claude agents failed")
         return self.sessions

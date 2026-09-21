@@ -55,7 +55,7 @@ def test_send_deps_wire_the_claude_cli_the_registry_dir_and_the_probe(tmp_path: 
     settings = _settings(tmp_path)
     runner = FakeRunner(queue=[CommandResult(returncode=0, stdout="[]", stderr="")])
     deps = build_send_deps(settings, {}, ProcessInfo(uid=501), runner)
-    assert deps.sessions.list_interactive() == ()
+    assert deps.sessions.list_live() == ()
     assert runner.calls == [("claude", "agents", "--json")]
     deps.registry.save(entry(7))
     assert (settings.sessions_dir / "7.json").is_file()
@@ -65,5 +65,5 @@ def test_send_deps_wire_the_claude_cli_the_registry_dir_and_the_probe(tmp_path: 
 def test_deliver_deps_list_sessions_through_the_claude_cli(tmp_path: Path) -> None:
     runner = FakeRunner(queue=[CommandResult(returncode=0, stdout="[]", stderr="")])
     deps = build_deliver_deps(_settings(tmp_path), {}, ProcessInfo(uid=501), runner)
-    assert deps.sessions.list_interactive() == ()
+    assert deps.sessions.list_live() == ()
     assert runner.calls == [("claude", "agents", "--json")]

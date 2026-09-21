@@ -55,9 +55,13 @@ def test_an_unknown_pid_is_no_such_session_and_nothing_is_posted() -> None:
     assert poster.posts == []
 
 
-def test_a_background_session_is_not_a_valid_target() -> None:
-    deps = replace(_deps(), sessions=FakeSessions((session(30, kind=SessionKind.BACKGROUND),)))
-    assert send_message(Pid(30), "x", deps) == NoSuchSession(Pid(30))
+def test_a_background_session_named_by_pid_is_a_valid_target() -> None:
+    poster = FakePoster()
+    background = FakeSessions((session(30, kind=SessionKind.BACKGROUND),))
+    result = send_message(Pid(30), "x", replace(_deps(), sessions=background, poster=poster))
+    assert isinstance(result, Sent)
+    assert result.target.session.kind is SessionKind.BACKGROUND
+    assert [address.pid for address, _content in poster.posts] == [Pid(30)]
 
 
 def test_a_dead_socket_becomes_unavailable_with_the_reason() -> None:

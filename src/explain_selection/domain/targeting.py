@@ -22,7 +22,7 @@ from explain_selection.domain.models import (
 
 @dataclass(frozen=True, slots=True)
 class Target:
-    """A live interactive session joined with its registry entry, if the hook wrote one."""
+    """A live session joined with its registry entry, if the hook wrote one."""
 
     session: LiveSession
     entry: RegistryEntry | None
@@ -86,14 +86,19 @@ _STATUS_RANK: Final[dict[SessionStatus, int]] = {
 
 
 def join_targets(
-    sessions: Iterable[LiveSession], entries: Iterable[RegistryEntry]
+    sessions: Iterable[LiveSession],
+    entries: Iterable[RegistryEntry],
+    *,
+    include_background: bool = False,
 ) -> tuple[Target, ...]:
-    """Pair interactive sessions with registry entries by pid; drop everything else."""
+    """Pair sessions with registry entries by pid, sorted by pid; entries without a session go.
+
+    Only interactive sessions become targets unless ``include_background`` is set, which the
+    explicit ``send`` and ``sessions`` use cases do; the hotkey path never does.
+    """
     by_pid = {entry.pid: entry for entry in entries}
-    interactive = (s for s in sessions if s.kind is SessionKind.INTERACTIVE)
-    return tuple(
-        Target(session=s, entry=by_pid.get(s.pid)) for s in sorted(interactive, key=_pid_of)
-    )
+    kept = (s for s in sessions if include_background or s.kind is SessionKind.INTERACTIVE)
+    return tuple(Target(session=s, entry=by_pid.get(s.pid)) for s in sorted(kept, key=_pid_of))
 
 
 def select_target(

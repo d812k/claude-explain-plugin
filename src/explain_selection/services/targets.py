@@ -14,20 +14,25 @@ from explain_selection.services.protocols import (
 
 
 def live_targets(
-    sessions: SessionLister, registry: RegistryStore, probe: ProcessProbe
+    sessions: SessionLister,
+    registry: RegistryStore,
+    probe: ProcessProbe,
+    *,
+    include_background: bool = False,
 ) -> tuple[Target, ...]:
-    """Interactive sessions paired with their registry entries, sorted by pid.
+    """Live sessions paired with their registry entries, sorted by pid.
 
-    An entry whose pid ``claude agents`` does not list may still belong to a session the CLI
-    failed to report; only a pid the kernel no longer knows is pruned from the registry.
+    Interactive sessions only, unless ``include_background`` is set. An entry whose pid
+    ``claude agents`` does not list may still belong to a session the CLI failed to report;
+    only a pid the kernel no longer knows is pruned from the registry.
     """
-    live = sessions.list_interactive()
+    live = sessions.list_live()
     entries = registry.read_all()
     live_pids = {s.pid for s in live}
     for entry in entries:
         if entry.pid not in live_pids and not probe.is_alive(entry.pid):
             registry.delete(entry.pid)
-    return join_targets(live, entries)
+    return join_targets(live, entries, include_background=include_background)
 
 
 def address_for(target: Target) -> InboxAddress:

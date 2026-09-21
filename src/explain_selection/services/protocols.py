@@ -41,10 +41,10 @@ class Clock(Protocol):
 
 
 class SessionLister(Protocol):
-    """Lists the live interactive Claude Code sessions on this machine."""
+    """Lists the live Claude Code sessions on this machine, of every known kind."""
 
-    def list_interactive(self) -> tuple[LiveSession, ...]:
-        """Return the process-alive interactive sessions, in any order."""
+    def list_live(self) -> tuple[LiveSession, ...]:
+        """Return the process-alive sessions, interactive and background, in any order."""
         ...
 
 

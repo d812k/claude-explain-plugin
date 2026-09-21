@@ -1,8 +1,9 @@
 """``SessionLister`` backed by ``claude agents --json``.
 
-Parses the CLI's JSON at the boundary with pydantic, keeps only process-alive interactive
-sessions, and converts them to :class:`LiveSession`. Unknown or missing status is treated as
-busy so an ambiguous session is never mistaken for idle.
+Parses the CLI's JSON at the boundary with pydantic, keeps the process-alive sessions of every
+known kind (interactive and background), and converts them to :class:`LiveSession`. Which kinds
+a use case targets is decided in the domain. Unknown or missing status is treated as busy so an
+ambiguous session is never mistaken for idle.
 """
 
 import logging
@@ -74,11 +75,22 @@ def _status(raw: str | None) -> SessionStatus:
             return SessionStatus.BUSY
 
 
-def _to_session(model: _AgentModel, pid: Pid) -> LiveSession:
+def _kind(raw: str) -> SessionKind | None:
+    """The session kind for a ``kind`` string; ``None`` for a kind this plugin does not know."""
+    match raw:
+        case "interactive":
+            return SessionKind.INTERACTIVE
+        case "background":
+            return SessionKind.BACKGROUND
+        case _:
+            return None
+
+
+def _to_session(model: _AgentModel, pid: Pid, kind: SessionKind) -> LiveSession:
     return LiveSession(
         pid=pid,
         cwd=model.cwd,
-        kind=SessionKind.INTERACTIVE,
+        kind=kind,
         started_at_ms=_started_at_ms(model.started_at),
         status=_status(model.status),
         session_id=SessionId(model.session_id) if model.session_id else None,
@@ -87,7 +99,7 @@ def _to_session(model: _AgentModel, pid: Pid) -> LiveSession:
 
 
 class AgentsCli:
-    """Lists interactive sessions by shelling out to the ``claude`` binary."""
+    """Lists live sessions of every known kind by shelling out to the ``claude`` binary."""
 
     def __init__(
         self, runner: CommandRunner, *, claude_bin: str = "claude", timeout_s: float = 5.0
@@ -96,7 +108,7 @@ class AgentsCli:
         self._claude_bin = claude_bin
         self._timeout_s = timeout_s
 
-    def list_interactive(self) -> tuple[LiveSession, ...]:
+    def list_live(self) -> tuple[LiveSession, ...]:
         result = self._runner.run([self._claude_bin, "agents", "--json"], timeout=self._timeout_s)
         if result.returncode != 0:
             raise AgentsQueryError(f"claude agents --json exited {result.returncode}")
@@ -107,9 +119,10 @@ class AgentsCli:
         models = parsed.agents if isinstance(parsed, _AgentsEnvelope) else parsed
         sessions: list[LiveSession] = []
         for model in models:
-            if model.pid is None or model.kind != "interactive":
+            kind = _kind(model.kind)
+            if model.pid is None or kind is None:
                 continue
-            sessions.append(_to_session(model, Pid(model.pid)))
+            sessions.append(_to_session(model, Pid(model.pid), kind))
         return tuple(sessions)
 
 

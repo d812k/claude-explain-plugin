@@ -11,6 +11,7 @@ from explain_selection.domain import (
     PickReason,
     Pid,
     RememberedTarget,
+    SessionKind,
     clean_selection,
     join_targets,
 )
@@ -112,6 +113,16 @@ def test_no_live_session_opens_a_new_window() -> None:
     url = opener.opened[0]
     assert url.startswith("claude-cli://open?cwd=")
     assert "explain-selection%3Aexplain" in url
+
+
+def test_a_background_session_is_not_a_hotkey_target_so_a_new_window_opens() -> None:
+    opener, poster = FakeOpener(), FakePoster()
+    background = FakeSessions((session(10, kind=SessionKind.BACKGROUND),))
+    deps = replace(_deps(), sessions=background, opener=opener, poster=poster)
+    result = deliver_selection("boom", _policy(), deps)
+    assert isinstance(result, OpenedNewWindow)
+    assert poster.posts == []
+    assert len(opener.opened) == 1
 
 
 def test_long_selection_with_truncate_policy_marks_the_link_truncated() -> None:

@@ -5,7 +5,7 @@ from collections.abc import Sequence
 
 import pytest
 
-from explain_selection.domain import Pid, SessionStatus
+from explain_selection.domain import Pid, SessionKind, SessionStatus
 from explain_selection.entrypoints.cli import package_version, run
 from explain_selection.services import SendDeps
 from tests.builders import entry, session
@@ -52,9 +52,16 @@ def test_sessions_prints_one_aligned_line_per_live_session_in_chooser_order() ->
     assert code == 0
     assert err == ""
     assert out.splitlines() == [
-        "20  idle  unregistered  proj   /home/me/proj",
-        "10  busy  registered    alpha  /work",
+        "20  idle  interactive  unregistered  proj   /home/me/proj",
+        "10  busy  interactive  registered    alpha  /work",
     ]
+
+
+def test_sessions_shows_background_sessions_in_the_kind_column() -> None:
+    background = FakeSessions((session(30, kind=SessionKind.BACKGROUND, cwd="/jobs"),))
+    code, out, err = _run(["sessions"], _deps(sessions=background))
+    assert (code, err) == (0, "")
+    assert out.splitlines() == ["30  idle  background  unregistered  jobs  /jobs"]
 
 
 def test_sessions_with_no_live_session_says_so_on_stderr() -> None:
@@ -102,7 +109,7 @@ def test_send_to_an_unknown_pid_fails_with_the_reason_on_stderr() -> None:
     poster = FakePoster()
     code, out, err = _run(["send", "--pid", "999", "--text", "x"], _deps(poster=poster))
     assert (code, out) == (1, "")
-    assert "no live interactive session with pid 999" in err
+    assert "no live session with pid 999" in err
     assert poster.posts == []
 
 
