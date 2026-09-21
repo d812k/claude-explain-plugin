@@ -32,6 +32,18 @@ def test_overlong_primary_path_is_replaced_by_uid_fallback() -> None:
     assert paths == ("/tmp/cc-socks-42/1.sock",)
 
 
+def test_undecodable_runtime_dir_bytes_do_not_raise() -> None:
+    # Python surfaces undecodable environment bytes as lone surrogates (surrogateescape).
+    paths = candidate_socket_paths(Pid(9), {"XDG_RUNTIME_DIR": "/\udc80run"}, 501)
+    assert paths == ("/\udc80run/cc-socks/9.sock", "/tmp/cc-socks-501/9.sock")
+
+
+def test_overlong_undecodable_runtime_dir_is_replaced_by_uid_fallback() -> None:
+    long_dir = "/" + "\udc80" * MAX_SOCKET_PATH_BYTES
+    paths = candidate_socket_paths(Pid(1), {"XDG_RUNTIME_DIR": long_dir}, 42)
+    assert paths == ("/tmp/cc-socks-42/1.sock",)
+
+
 def test_pid_is_read_back_from_a_socket_path() -> None:
     assert pid_from_socket_path("/run/user/501/cc-socks/2268544.sock") == 2268544
 

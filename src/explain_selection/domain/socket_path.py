@@ -10,12 +10,22 @@ SOCKET_SUFFIX: Final[str] = ".sock"
 MAX_SOCKET_PATH_BYTES: Final[int] = 103
 
 
+def _byte_length(path: str) -> int:
+    """Length of ``path`` in bytes as the kernel sees it.
+
+    Python decodes undecodable environment bytes into lone surrogates
+    (``surrogateescape``); encoding them back the same way measures such a
+    path without raising, matching ``os.fsencode``.
+    """
+    return len(path.encode("utf-8", "surrogateescape"))
+
+
 def candidate_socket_paths(pid: Pid, env: Mapping[str, str], uid: int) -> tuple[str, ...]:
     """Return the inbox socket paths Claude Code may use for ``pid``, most likely first."""
     runtime_dir = env.get("XDG_RUNTIME_DIR") or "/tmp"
     primary = f"{runtime_dir}/{SOCKET_DIR_NAME}/{pid}{SOCKET_SUFFIX}"
     fallback = f"/tmp/{SOCKET_DIR_NAME}-{uid}/{pid}{SOCKET_SUFFIX}"
-    if len(primary.encode()) > MAX_SOCKET_PATH_BYTES:
+    if _byte_length(primary) > MAX_SOCKET_PATH_BYTES:
         return (fallback,)
     return (primary, fallback)
 

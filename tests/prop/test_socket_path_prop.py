@@ -38,4 +38,5 @@ def test_first_candidate_never_exceeds_the_sockaddr_limit(
 ) -> None:
     env = {} if runtime_dir is None else {"XDG_RUNTIME_DIR": runtime_dir}
     first = candidate_socket_paths(pid, env, uid)[0]
-    assert len(first.encode()) <= MAX_SOCKET_PATH_BYTES
+    # surrogateescape: lone surrogates stand for undecodable env bytes; measure as the OS would.
+    assert len(first.encode("utf-8", "surrogateescape")) <= MAX_SOCKET_PATH_BYTES
