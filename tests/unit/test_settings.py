@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from explain_selection.entrypoints.settings import (
     Settings,
+    exported_plugin_root,
     load_settings,
     resolve_plugin_root,
 )
@@ -111,3 +112,11 @@ def test_plugin_root_prefers_the_wrapper_export() -> None:
 def test_plugin_root_falls_back_to_claude_then_checkout() -> None:
     assert resolve_plugin_root({"CLAUDE_PLUGIN_ROOT": "/b"}, Path("/c")) == Path("/b")
     assert resolve_plugin_root({"CLAUDE_PLUGIN_ROOT": ""}, Path("/c")) == Path("/c")
+
+
+def test_exported_plugin_root_is_none_unless_a_wrapper_or_claude_set_it() -> None:
+    assert exported_plugin_root({}) is None
+    assert exported_plugin_root({"CLAUDE_PLUGIN_ROOT": ""}) is None
+    assert exported_plugin_root({"CLAUDE_PLUGIN_ROOT": "/b"}) == Path("/b")
+    both = {"EXPLAIN_SELECTION_PLUGIN_ROOT": "/a", "CLAUDE_PLUGIN_ROOT": "/b"}
+    assert exported_plugin_root(both) == Path("/a")

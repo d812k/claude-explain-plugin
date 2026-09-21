@@ -2,9 +2,11 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from explain_selection.adapters import CommandResult
 from explain_selection.domain import (
+    FileFacts,
     Focus,
     LiveSession,
     Pid,
@@ -12,8 +14,17 @@ from explain_selection.domain import (
     RememberedTarget,
     Target,
 )
-from explain_selection.errors import AgentsQueryError, InboxUnavailableError, SubprocessError
-from explain_selection.services import InboxAddress
+from explain_selection.errors import (
+    AgentsQueryError,
+    InboxUnavailableError,
+    InstallError,
+    SubprocessError,
+)
+from explain_selection.services import ClaudeSettingsFacts, InboxAddress
+
+MISSING = FileFacts(
+    exists=False, mode=None, is_dir=False, is_socket=False, is_executable=False, readable=False
+)
 
 
 @dataclass(slots=True)
@@ -210,3 +221,127 @@ class FakeConnector:
         if path in self.fail_paths:
             raise OSError(f"connection refused: {path}")
         self.sent.append((path, payload))
+
+
+@dataclass(slots=True)
+class FakeInstallFiles:
+    """An in-memory install file layer: records every write; can pre-populate or fail paths."""
+
+    existing: set[Path] = field(default_factory=set[Path])
+    fail_paths: set[Path] = field(default_factory=set[Path])
+    dirs: list[Path] = field(default_factory=list[Path])
+    written: dict[Path, tuple[str, int]] = field(default_factory=dict[Path, tuple[str, int]])
+    copied: list[tuple[Path, Path]] = field(default_factory=list[tuple[Path, Path]])
+    replaced: list[tuple[Path, Path]] = field(default_factory=list[tuple[Path, Path]])
+
+    def ensure_private_dir(self, path: Path) -> None:
+        self._check(path)
+        self.dirs.append(path)
+
+    def exists(self, path: Path) -> bool:
+        return (
+            path in self.existing
+            or path in self.written
+            or any(dst == path for _, dst in self.copied)
+        )
+
+    def write_private_file(self, path: Path, content: str, mode: int) -> None:
+        self._check(path)
+        self.written[path] = (content, mode)
+
+    def copy_file(self, src: Path, dst: Path) -> None:
+        self._check(dst)
+        self.copied.append((src, dst))
+
+    def replace_tree(self, src: Path, dst: Path) -> None:
+        self._check(dst)
+        self.replaced.append((src, dst))
+
+    @property
+    def touched(self) -> bool:
+        return bool(self.dirs or self.written or self.copied or self.replaced)
+
+    def _check(self, path: Path) -> None:
+        if path in self.fail_paths:
+            raise InstallError(f"permission denied: {path}")
+
+
+@dataclass(slots=True)
+class FakeRegistrar:
+    """A macOS Services registrar that records calls and answers a canned status."""
+
+    status: str = ""
+    fail: bool = False
+    shortcuts: list[tuple[str, str]] = field(default_factory=list[tuple[str, str]])
+    refreshes: int = 0
+
+    def set_shortcut(self, service_name: str, key: str) -> None:
+        if self.fail:
+            raise InstallError("defaults write failed")
+        self.shortcuts.append((service_name, key))
+
+    def refresh(self) -> None:
+        self.refreshes += 1
+
+    def read_status(self) -> str:
+        return self.status
+
+
+@dataclass(slots=True)
+class FakeFiles:
+    """A read-only file inspector over two tables; a path in neither does not exist."""
+
+    facts: dict[Path, FileFacts] = field(default_factory=dict[Path, FileFacts])
+    texts: dict[Path, str] = field(default_factory=dict[Path, str])
+    inspected: list[Path] = field(default_factory=list[Path])
+
+    def inspect(self, path: Path) -> FileFacts:
+        self.inspected.append(path)
+        return self.facts.get(path, MISSING)
+
+    def read_text(self, path: Path) -> str | None:
+        return self.texts.get(path)
+
+
+@dataclass(slots=True)
+class FakeVersions:
+    """Answers a fixed installed version; records which interpreters it was asked about."""
+
+    version: str | None = "0.1.0"
+    asked: list[Path] = field(default_factory=list[Path])
+
+    def installed_version(self, python: Path) -> str | None:
+        self.asked.append(python)
+        return self.version
+
+
+@dataclass(slots=True)
+class FakeClaudeSettings:
+    """Returns fixed Claude Code settings facts."""
+
+    facts: ClaudeSettingsFacts = field(
+        default_factory=lambda: ClaudeSettingsFacts(
+            cross_session_inbound=None, plugin_enabled=True, unreadable_files=()
+        )
+    )
+
+    def read(self) -> ClaudeSettingsFacts:
+        return self.facts
+
+
+@dataclass(slots=True)
+class FakeMac:
+    """A macOS probe with canned answers."""
+
+    bundle_facts: FileFacts = MISSING
+    status: str | None = None
+    osascript: bool = True
+
+    def bundle(self) -> FileFacts:
+        return self.bundle_facts
+
+    def shortcut_status(self) -> str | None:
+        return self.status
+
+    def osascript_found(self) -> bool:
+        return self.osascript

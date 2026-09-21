@@ -21,10 +21,15 @@ class SubprocessError(ExplainSelectionError):
     """An injected subprocess runner failed to produce usable output."""
 
 
+class InstallError(ExplainSelectionError):
+    """An install step's file operation or macOS Services command failed."""
+
+
 __all__ = [
     "AgentsQueryError",
     "ExplainSelectionError",
     "InboxUnavailableError",
+    "InstallError",
     "RegistryError",
     "SubprocessError",
 ]

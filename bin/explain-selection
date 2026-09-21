@@ -1,5 +1,6 @@
 #!/bin/sh
 # Command line: explain-selection version | sessions | send --pid <int> [--text -|<string>]
+#               | install [--shortcut KEY] [--dry-run] [--plugin-root PATH] | doctor
 # Finds the interpreter prepared by the install skill and execs the Python entrypoint.
 # Without an interpreter it prints one line to stderr and exits 1: unlike the hook
 # wrappers, which must stay silent and succeed, a command run by hand can afford to complain.

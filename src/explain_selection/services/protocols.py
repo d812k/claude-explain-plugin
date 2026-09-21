@@ -5,10 +5,13 @@ them; unit tests supply in-memory fakes. Nothing in this module performs I/O.
 """
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol
 
 from explain_selection.domain import (
+    FileFacts,
     Focus,
+    InboundPolicy,
     InboxToken,
     LiveSession,
     Pid,
@@ -140,18 +143,121 @@ class ProcessProbe(Protocol):
         ...
 
 
+class InstallFiles(Protocol):
+    """The file operations the install step needs; each raises :class:`InstallError`."""
+
+    def ensure_private_dir(self, path: Path) -> None:
+        """Create ``path`` if missing and make it mode 0700 either way."""
+        ...
+
+    def exists(self, path: Path) -> bool:
+        """``True`` when a file or directory is at ``path``."""
+        ...
+
+    def write_private_file(self, path: Path, content: str, mode: int) -> None:
+        """Write ``content`` to ``path`` and set ``mode``; the parent must already exist."""
+        ...
+
+    def copy_file(self, src: Path, dst: Path) -> None:
+        """Copy one file, contents only."""
+        ...
+
+    def replace_tree(self, src: Path, dst: Path) -> None:
+        """Copy the directory ``src`` to ``dst``, removing whatever was at ``dst`` first."""
+        ...
+
+
+class ServicesRegistrar(Protocol):
+    """Registers a Services-menu entry's keyboard shortcut with macOS."""
+
+    def set_shortcut(self, service_name: str, key: str) -> None:
+        """Assign ``key`` (for example ``@~e``) to the workflow service ``service_name``."""
+        ...
+
+    def refresh(self) -> None:
+        """Make the Services menu pick up the change."""
+        ...
+
+    def read_status(self) -> str:
+        """The current Services status as macOS reports it, for verification."""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class ClaudeSettingsFacts:
+    """What the doctor reads from Claude Code's ``settings.json`` files.
+
+    ``unreadable_files`` names the files that exist but could not be parsed and were skipped.
+    """
+
+    cross_session_inbound: InboundPolicy | None
+    plugin_enabled: bool
+    unreadable_files: tuple[str, ...]
+
+
+class FileInspector(Protocol):
+    """Read-only questions about paths, for the doctor."""
+
+    def inspect(self, path: Path) -> FileFacts:
+        """Describe ``path``; missing yields ``exists=False``, unstat-able ``readable=False``."""
+        ...
+
+    def read_text(self, path: Path) -> str | None:
+        """The file's text, or ``None`` when it is missing or cannot be read as UTF-8 text."""
+        ...
+
+
+class VersionProbe(Protocol):
+    """Asks an interpreter which version of this package it has installed."""
+
+    def installed_version(self, python: Path) -> str | None:
+        """The distribution version under ``python``, or ``None`` if it cannot be read."""
+        ...
+
+
+class ClaudeSettingsReader(Protocol):
+    """Reads the Claude Code settings the doctor cares about."""
+
+    def read(self) -> ClaudeSettingsFacts:
+        """Merge the settings files; missing or invalid files count as unset."""
+        ...
+
+
+class MacProbe(Protocol):
+    """The macOS-only facts: Services bundle, shortcut status and ``osascript``."""
+
+    def bundle(self) -> FileFacts:
+        """Describe the installed ``Explain selection.workflow`` bundle."""
+        ...
+
+    def shortcut_status(self) -> str | None:
+        """The Services status as ``defaults`` reports it, or ``None`` if it cannot be read."""
+        ...
+
+    def osascript_found(self) -> bool:
+        """``True`` when ``osascript`` is on ``PATH``."""
+        ...
+
+
 __all__ = [
     "Chooser",
+    "ClaudeSettingsFacts",
+    "ClaudeSettingsReader",
     "Clock",
+    "FileInspector",
     "FocusProbe",
     "InboxAddress",
     "InboxPoster",
+    "InstallFiles",
     "LinkOpener",
+    "MacProbe",
     "Notifier",
     "ProcessProbe",
     "RegistryStore",
+    "ServicesRegistrar",
     "SessionLister",
     "TargetMemory",
     "TempFileWriter",
     "TtyLookup",
+    "VersionProbe",
 ]

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://code.claude.com/schemas/marketplace.json",
+  "name": "explain-selection",
+  "description": "macOS terminal text selection plugin for Claude Code",
+  "version": "0.1.0",
+  "owner": {
+    "name": "Daniel Kisliuk"
+  },
+  "plugins": [
+    {
+      "name": "explain-selection",
+      "source": "./",
+      "description": "Select text in your terminal, press a hotkey, and have the running Claude Code session explain it.",
+      "version": "0.1.0"
+    }
+  ]
+}
