@@ -185,10 +185,14 @@ class ServicesRegistrar(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class ClaudeSettingsFacts:
-    """What the doctor reads from Claude Code's ``settings.json`` files."""
+    """What the doctor reads from Claude Code's ``settings.json`` files.
+
+    ``unreadable_files`` names the files that exist but could not be parsed and were skipped.
+    """
 
     cross_session_inbound: InboundPolicy | None
     plugin_enabled: bool
+    unreadable_files: tuple[str, ...]
 
 
 class FileInspector(Protocol):

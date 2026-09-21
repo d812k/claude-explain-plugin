@@ -30,39 +30,57 @@ class _SettingsModel(BaseModel):
 
 @dataclass(frozen=True, slots=True)
 class JsonClaudeSettingsReader:
-    """Merges ``paths`` in order; a missing file is skipped, an invalid one logged and skipped."""
+    """Merges ``paths`` in order; a missing file is skipped, an invalid one logged and reported.
+
+    The ``enabledPlugins`` maps are merged key by key, later files overriding earlier ones,
+    and the plugin counts as enabled when any ``<plugin>@<marketplace>`` key is on in the
+    merged map. So a later file can switch off an entry an earlier file switched on.
+    """
 
     paths: tuple[Path, ...]
     plugin_name: str
 
     def read(self) -> ClaudeSettingsFacts:
         policy: InboundPolicy | None = None
-        enabled = False
-        prefix = f"{self.plugin_name}@"
+        enabled_plugins: dict[str, bool] = {}
+        unreadable: list[str] = []
         for path in self.paths:
-            model = _load(path)
-            if model is None:
-                continue
-            if model.cross_session_inbound is not None:
-                policy = model.cross_session_inbound
-            if any(key.startswith(prefix) and on for key, on in model.enabled_plugins.items()):
-                enabled = True
-        return ClaudeSettingsFacts(cross_session_inbound=policy, plugin_enabled=enabled)
+            match _load(path):
+                case None:
+                    continue
+                case _Unreadable():
+                    unreadable.append(str(path))
+                case _SettingsModel() as model:
+                    if model.cross_session_inbound is not None:
+                        policy = model.cross_session_inbound
+                    enabled_plugins.update(model.enabled_plugins)
+        prefix = f"{self.plugin_name}@"
+        enabled = any(key.startswith(prefix) and on for key, on in enabled_plugins.items())
+        return ClaudeSettingsFacts(
+            cross_session_inbound=policy,
+            plugin_enabled=enabled,
+            unreadable_files=tuple(unreadable),
+        )
 
 
-def _load(path: Path) -> _SettingsModel | None:
+@dataclass(frozen=True, slots=True)
+class _Unreadable:
+    """The file is there but could not be read or parsed."""
+
+
+def _load(path: Path) -> _SettingsModel | _Unreadable | None:
     try:
         raw = path.read_text(encoding="utf-8")
     except FileNotFoundError:
         return None
-    except OSError as exc:
+    except (OSError, UnicodeDecodeError) as exc:
         logger.warning("could not read %s: %s", path, type(exc).__name__)
-        return None
+        return _Unreadable()
     try:
         return _SettingsModel.model_validate_json(raw)
     except ValidationError:
         logger.warning("skipping unreadable settings file %s", path)
-        return None
+        return _Unreadable()
 
 
 __all__ = ["JsonClaudeSettingsReader"]

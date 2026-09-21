@@ -55,6 +55,7 @@ def evaluate(facts: DoctorFacts) -> tuple[Check, ...]:
         _config(runtime),
         _template(runtime),
         _plugin_enabled(claude),
+        _settings_files(claude),
         _agents(claude),
         *(_session(session) for session in claude.sessions),
         _stale_entries(claude),
@@ -175,6 +176,13 @@ def _plugin_enabled(claude: ClaudeFacts) -> Check:
         fix = "enable the plugin with /plugin so the hooks register sessions"
         return _warn("plugin-enabled", "not in enabledPlugins", fix)
     return _ok("plugin-enabled", "listed in enabledPlugins")
+
+
+def _settings_files(claude: ClaudeFacts) -> Check:
+    if claude.unreadable_settings:
+        files = ", ".join(claude.unreadable_settings)
+        return _warn("settings-files", f"skipped {files}", f"fix the JSON in {files}")
+    return _ok("settings-files", "all readable")
 
 
 def _agents(claude: ClaudeFacts) -> Check:

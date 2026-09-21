@@ -72,6 +72,7 @@ class ClaudeFacts:
     stale_entries: int
     cross_session_inbound: InboundPolicy | None
     plugin_enabled: bool
+    unreadable_settings: tuple[str, ...]
     agents_error: str | None
 
 

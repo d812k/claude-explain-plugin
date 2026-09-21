@@ -141,12 +141,16 @@ def claude_facts(
     plugin_enabled: bool = True,
     agents_error: str | None = None,
 ) -> ClaudeFacts:
-    """A healthy Claude Code side: plugin enabled, default inbound policy, no sessions."""
+    """A healthy Claude Code side: plugin enabled, default policy, readable settings, no sessions.
+
+    Use :func:`dataclasses.replace` for ``unreadable_settings``.
+    """
     return ClaudeFacts(
         sessions=sessions,
         stale_entries=stale_entries,
         cross_session_inbound=cross_session_inbound,
         plugin_enabled=plugin_enabled,
+        unreadable_settings=(),
         agents_error=agents_error,
     )
 

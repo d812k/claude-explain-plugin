@@ -43,6 +43,7 @@ ORDER = (
     "config",
     "template",
     "plugin-enabled",
+    "settings-files",
     "agents",
     "stale-entries",
     "inbound-policy",
@@ -77,15 +78,15 @@ def _mac_check(name: str, mac: MacFacts) -> Check:
 def test_a_healthy_linux_box_passes_every_check_and_skips_the_mac_ones() -> None:
     checks = evaluate(doctor_facts())
     assert [check.name for check in checks] == list(ORDER)
-    assert [check.status for check in checks] == ["ok"] * 10 + ["skip"] * 3
+    assert [check.status for check in checks] == ["ok"] * 11 + ["skip"] * 3
     assert all(check.fix is None for check in checks)
-    assert {check.detail for check in checks[10:]} == {"macOS only"}
+    assert {check.detail for check in checks[11:]} == {"macOS only"}
     assert checks_ok(checks)
 
 
 def test_a_healthy_mac_passes_every_check() -> None:
     checks = evaluate(doctor_facts(mac=mac_facts()))
-    assert [check.status for check in checks] == ["ok"] * 13
+    assert [check.status for check in checks] == ["ok"] * 14
 
 
 def test_a_missing_home_fails_and_a_permissive_home_warns() -> None:
@@ -217,6 +218,19 @@ def test_a_disabled_plugin_warns_with_the_plugin_command() -> None:
     )
 
 
+def test_unreadable_settings_files_warn_and_are_named_in_the_fix() -> None:
+    files = ("/u/.claude/settings.json", "/w/.claude/settings.local.json")
+    broken = replace(claude_facts(), unreadable_settings=files)
+    check = _claude_check("settings-files", broken)
+    assert (check.status, check.detail) == (
+        "warn",
+        "skipped /u/.claude/settings.json, /w/.claude/settings.local.json",
+    )
+    assert check.fix == "fix the JSON in /u/.claude/settings.json, /w/.claude/settings.local.json"
+    fine = _claude_check("settings-files", claude_facts())
+    assert (fine.status, fine.detail) == ("ok", "all readable")
+
+
 def test_agents_fails_with_the_adapter_error_and_otherwise_counts_sessions() -> None:
     broken = _claude_check("agents", claude_facts(agents_error="claude not found"))
     assert (broken.status, broken.detail) == ("fail", "claude not found")
@@ -231,7 +245,7 @@ def test_each_session_gets_a_check_between_agents_and_stale_entries() -> None:
     in_tmux = replace(session_facts(11, age_ms=125_000), tmux="main")
     facts = claude_facts(sessions=(in_tmux, session_facts(12)))
     names = [check.name for check in evaluate(doctor_facts(claude=facts))]
-    assert names[7:11] == ["agents", "session 11", "session 12", "stale-entries"]
+    assert names[8:12] == ["agents", "session 11", "session 12", "stale-entries"]
     first = _claude_check("session 11", facts)
     assert (first.status, first.fix) == ("ok", None)
     assert first.detail == "idle interactive registered tmux main socket ok up 2m"

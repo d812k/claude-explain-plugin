@@ -81,6 +81,7 @@ def claude_facts(draw: st.DrawFn) -> ClaudeFacts:
         stale_entries=draw(st.integers(min_value=0, max_value=20)),
         cross_session_inbound=draw(policies),
         plugin_enabled=draw(st.booleans()),
+        unreadable_settings=tuple(draw(st.lists(st.text(min_size=1, max_size=12), max_size=3))),
         agents_error=draw(st.one_of(st.none(), st.text(max_size=20))),
     )
 
@@ -107,7 +108,7 @@ def doctor_facts(draw: st.DrawFn) -> DoctorFacts:
 @given(doctor_facts())
 def test_evaluate_is_total_and_every_non_ok_check_carries_a_fix(facts: DoctorFacts) -> None:
     checks = evaluate(facts)
-    assert len(checks) == 13 + len(facts.claude.sessions)
+    assert len(checks) == 14 + len(facts.claude.sessions)
     for check in checks:
         assert check.name
         assert check.detail

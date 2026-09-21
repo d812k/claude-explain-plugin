@@ -154,6 +154,7 @@ def _claude_facts(deps: DoctorDeps) -> ClaudeFacts:
         stale_entries=stale,
         cross_session_inbound=settings.cross_session_inbound,
         plugin_enabled=settings.plugin_enabled,
+        unreadable_settings=settings.unreadable_files,
         agents_error=agents_error,
     )
 

@@ -195,10 +195,15 @@ def test_a_failing_agents_query_becomes_the_error_text_and_leaves_the_rest_intac
 
 def test_claude_settings_facts_are_passed_through() -> None:
     settings = FakeClaudeSettings(
-        facts=ClaudeSettingsFacts(cross_session_inbound="hold", plugin_enabled=False)
+        facts=ClaudeSettingsFacts(
+            cross_session_inbound="hold",
+            plugin_enabled=False,
+            unreadable_files=("/users/me/.claude/settings.json",),
+        )
     )
     claude = gather_facts(replace(_deps(), claude_settings=settings)).claude
     assert (claude.cross_session_inbound, claude.plugin_enabled) == ("hold", False)
+    assert claude.unreadable_settings == ("/users/me/.claude/settings.json",)
 
 
 def test_mac_facts_are_absent_off_macos_and_probed_on_it() -> None:
@@ -213,5 +218,5 @@ def test_run_doctor_evaluates_the_gathered_facts() -> None:
     deps = _deps(sessions=FakeSessions(sessions=(session(11),)))
     checks = run_doctor(deps)
     assert checks == evaluate(gather_facts(deps))
-    assert [check.name for check in checks][7:10] == ["agents", "session 11", "stale-entries"]
-    assert [check.status for check in checks[:8]] == ["ok"] * 8
+    assert [check.name for check in checks][8:11] == ["agents", "session 11", "stale-entries"]
+    assert [check.status for check in checks[:9]] == ["ok"] * 9

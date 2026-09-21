@@ -108,7 +108,7 @@ def test_a_healthy_linux_box_exits_zero_with_the_mac_checks_skipped() -> None:
     assert (code, err) == (0, "")
     assert lines[:2] == ["[ok] home: mode 0700", "[ok] venv: venv/bin/python present"]
     assert lines[-4:-1] == SKIPPED
-    assert lines[-1] == "doctor: 10 ok, 0 warn, 0 fail, 3 skipped"
+    assert lines[-1] == "doctor: 11 ok, 0 warn, 0 fail, 3 skipped"
     assert not any(line.startswith("    fix:") for line in lines)
 
 
@@ -121,12 +121,14 @@ def test_a_missing_venv_exits_one_and_prints_the_fix_line() -> None:
     at = lines.index("[fail] venv: venv/bin/python missing")
     assert lines[at + 1] == "    fix: run /explain-selection:install"
     # No python means the version probe is skipped too, so `version` fails as well.
-    assert lines[-1] == "doctor: 8 ok, 0 warn, 2 fail, 3 skipped"
+    assert lines[-1] == "doctor: 9 ok, 0 warn, 2 fail, 3 skipped"
 
 
 def test_a_refuse_policy_exits_one() -> None:
     refusing = FakeClaudeSettings(
-        facts=ClaudeSettingsFacts(cross_session_inbound="refuse", plugin_enabled=True)
+        facts=ClaudeSettingsFacts(
+            cross_session_inbound="refuse", plugin_enabled=True, unreadable_files=()
+        )
     )
     code, out, _ = _run(lambda: replace(_healthy_linux(), claude_settings=refusing))
     assert code == 1
@@ -141,7 +143,7 @@ def test_an_unregistered_interactive_session_warns_but_exits_zero() -> None:
     assert code == 0
     at = lines.index("[warn] session 4242: busy interactive unregistered up 9m")
     assert lines[at + 1].startswith("    fix: restart this session with the plugin enabled;")
-    assert lines[-1] == "doctor: 10 ok, 1 warn, 0 fail, 3 skipped"
+    assert lines[-1] == "doctor: 11 ok, 1 warn, 0 fail, 3 skipped"
 
 
 def test_a_registered_session_with_its_socket_is_ok() -> None:

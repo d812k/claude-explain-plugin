@@ -320,7 +320,9 @@ class FakeClaudeSettings:
     """Returns fixed Claude Code settings facts."""
 
     facts: ClaudeSettingsFacts = field(
-        default_factory=lambda: ClaudeSettingsFacts(cross_session_inbound=None, plugin_enabled=True)
+        default_factory=lambda: ClaudeSettingsFacts(
+            cross_session_inbound=None, plugin_enabled=True, unreadable_files=()
+        )
     )
 
     def read(self) -> ClaudeSettingsFacts:
