@@ -5,6 +5,7 @@ them; unit tests supply in-memory fakes. Nothing in this module performs I/O.
 """
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol
 
 from explain_selection.domain import (
@@ -140,16 +141,58 @@ class ProcessProbe(Protocol):
         ...
 
 
+class InstallFiles(Protocol):
+    """The file operations the install step needs; each raises :class:`InstallError`."""
+
+    def ensure_private_dir(self, path: Path) -> None:
+        """Create ``path`` if missing and make it mode 0700 either way."""
+        ...
+
+    def exists(self, path: Path) -> bool:
+        """``True`` when a file or directory is at ``path``."""
+        ...
+
+    def write_private_file(self, path: Path, content: str, mode: int) -> None:
+        """Write ``content`` to ``path`` and set ``mode``; the parent must already exist."""
+        ...
+
+    def copy_file(self, src: Path, dst: Path) -> None:
+        """Copy one file, contents only."""
+        ...
+
+    def replace_tree(self, src: Path, dst: Path) -> None:
+        """Copy the directory ``src`` to ``dst``, removing whatever was at ``dst`` first."""
+        ...
+
+
+class ServicesRegistrar(Protocol):
+    """Registers a Services-menu entry's keyboard shortcut with macOS."""
+
+    def set_shortcut(self, service_name: str, key: str) -> None:
+        """Assign ``key`` (for example ``@~e``) to the workflow service ``service_name``."""
+        ...
+
+    def refresh(self) -> None:
+        """Make the Services menu pick up the change."""
+        ...
+
+    def read_status(self) -> str:
+        """The current Services status as macOS reports it, for verification."""
+        ...
+
+
 __all__ = [
     "Chooser",
     "Clock",
     "FocusProbe",
     "InboxAddress",
     "InboxPoster",
+    "InstallFiles",
     "LinkOpener",
     "Notifier",
     "ProcessProbe",
     "RegistryStore",
+    "ServicesRegistrar",
     "SessionLister",
     "TargetMemory",
     "TempFileWriter",
