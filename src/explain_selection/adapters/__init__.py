@@ -2,6 +2,7 @@
 
 from explain_selection.adapters.agents_cli import AgentsCli
 from explain_selection.adapters.clock import SystemClock
+from explain_selection.adapters.file_inspector import MISSING_FILE, LocalFileInspector
 from explain_selection.adapters.focus import PaneLookup, TmuxAwareFocus
 from explain_selection.adapters.hook_input import HookStdin, parse_hook_stdin
 from explain_selection.adapters.inbox_socket import (
@@ -30,6 +31,7 @@ from explain_selection.adapters.temp_files import TempFiles
 from explain_selection.adapters.tmux import TmuxPanes
 
 __all__ = [
+    "MISSING_FILE",
     "PBS",
     "AgentsCli",
     "CommandResult",
@@ -37,6 +39,7 @@ __all__ = [
     "FileTargetMemory",
     "HookStdin",
     "InboxSocketPoster",
+    "LocalFileInspector",
     "LocalInstallFiles",
     "OpenLinkOpener",
     "OsProcessProbe",
