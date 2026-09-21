@@ -12,6 +12,7 @@ from explain_selection.adapters.inbox_socket import (
     UnixSocketConnector,
 )
 from explain_selection.adapters.install_files import LocalInstallFiles
+from explain_selection.adapters.mac_probe import MacServicesProbe
 from explain_selection.adapters.opener import OpenLinkOpener
 from explain_selection.adapters.osascript import (
     OsascriptChooser,
@@ -45,6 +46,7 @@ __all__ = [
     "JsonClaudeSettingsReader",
     "LocalFileInspector",
     "LocalInstallFiles",
+    "MacServicesProbe",
     "OpenLinkOpener",
     "OsProcessProbe",
     "OsascriptChooser",
