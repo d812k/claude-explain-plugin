@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from explain_selection.domain import Pid, SessionStatus
+from explain_selection.domain import DEEP_LINK_QUERY_LIMIT, Pid, SessionStatus
 from explain_selection.entrypoints.capture import (
     BadUsage,
     FromArgument,
@@ -138,6 +138,27 @@ def test_truncated_selection_into_a_new_window_is_reported() -> None:
     assert len(opener.opened) == 1
     assert notifier.shown == [
         ("Explain selection", "Selection truncated to 1000 characters (1500 selected).")
+    ]
+
+
+def test_selection_shortened_to_fit_the_deep_link_is_reported() -> None:
+    deps, _, opener = _deps(live=False)
+    notifier = FakeNotifier()
+    roomy = DeliveryPolicy(
+        max_chars=10_000,
+        prompt_template="Explain: {text}",
+        remember_ttl_ms=600_000,
+        long_selection=LongSelection.TRUNCATE,
+        fallback_cwd="/home/user",
+    )
+    assert run([], lambda: "x" * 6_000, roomy, deps, notifier) == 0
+    assert len(opener.opened) == 1
+    assert notifier.shown == [
+        (
+            "Explain selection",
+            "Selection shortened to fit the new-window link, which holds "
+            f"{DEEP_LINK_QUERY_LIMIT} characters (6000 selected).",
+        )
     ]
 
 

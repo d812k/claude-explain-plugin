@@ -13,7 +13,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final, assert_never
 
-from explain_selection.domain import SessionStatus, describe_target
+from explain_selection.domain import DEEP_LINK_QUERY_LIMIT, SessionStatus, describe_target
 from explain_selection.entrypoints.runtime import (
     checkout_root,
     configure_logging,
@@ -168,6 +168,12 @@ def _report(outcome: Outcome, policy: DeliveryPolicy, notifier: Notifier) -> Non
                 link_truncated,
             )
             _report_truncation(outcome.truncated, outcome.original_chars, policy, notifier)
+            if link_truncated:
+                _notify(
+                    notifier,
+                    "Selection shortened to fit the new-window link, which holds "
+                    f"{DEEP_LINK_QUERY_LIMIT} characters ({outcome.chars} selected).",
+                )
         case Cancelled():
             logger.info("session choice cancelled by the user")
         case NothingToSend():
