@@ -94,6 +94,16 @@ def _runtime_facts(deps: DoctorDeps) -> RuntimeFacts:
     )
 
 
+def installed_plugin_root(files: FileInspector, home: Path, fallback: Path) -> Path:
+    """The plugin checkout the installed shim was written with, else ``fallback``.
+
+    A package installed into the runtime venv cannot infer its checkout from ``__file__``;
+    the shim the installer wrote is the record of where the plugin was at install time.
+    """
+    recorded = _shim_plugin_root(files.read_text(home / SHIM_FILE))
+    return fallback if recorded is None else Path(recorded)
+
+
 def _shim_plugin_root(text: str | None) -> str | None:
     if text is None:
         return None
@@ -155,4 +165,4 @@ def _mac_facts(mac: MacProbe | None) -> MacFacts | None:
     )
 
 
-__all__ = ["VENV_PYTHON", "DoctorDeps", "gather_facts", "run_doctor"]
+__all__ = ["VENV_PYTHON", "DoctorDeps", "gather_facts", "installed_plugin_root", "run_doctor"]

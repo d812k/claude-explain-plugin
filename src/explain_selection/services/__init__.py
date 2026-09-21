@@ -16,6 +16,7 @@ from explain_selection.services.doctor import (
     VENV_PYTHON,
     DoctorDeps,
     gather_facts,
+    installed_plugin_root,
     run_doctor,
 )
 from explain_selection.services.install import (
@@ -134,6 +135,7 @@ __all__ = [
     "deliver_selection",
     "gather_facts",
     "install_plugin",
+    "installed_plugin_root",
     "list_sessions",
     "platform_from",
     "register_session",

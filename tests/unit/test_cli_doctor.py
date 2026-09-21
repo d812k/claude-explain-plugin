@@ -5,10 +5,13 @@ from collections.abc import Callable, Sequence
 from dataclasses import replace
 from pathlib import Path
 
+import pytest
+
 from explain_selection.domain import Check, SessionStatus
 from explain_selection.entrypoints.cli import CliDeps, run
 from explain_selection.entrypoints.cli_doctor import (
     MANIFEST_RELATIVE,
+    build_doctor_deps,
     claude_settings_paths,
     plugin_version_from,
     report_lines,
@@ -182,6 +185,42 @@ def test_plugin_version_from_reads_the_manifest_or_yields_the_unreadable_marker(
     assert plugin_version_from(manifest) == ""
     manifest.write_text("{not json", encoding="utf-8")
     assert plugin_version_from(manifest) == ""
+
+
+def _installed_runtime(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path]:
+    """A home with a shim recording a plugin checkout that has a manifest; no root exported."""
+    plugin = tmp_path / "plugin"
+    (plugin / MANIFEST_RELATIVE).parent.mkdir(parents=True)
+    (plugin / MANIFEST_RELATIVE).write_text(
+        '{"name": "explain-selection", "version": "9.9.9"}', encoding="utf-8"
+    )
+    home = tmp_path / "home"
+    home.mkdir()
+    (home / "capture").write_text(
+        shim_content(plugin, home / "venv" / "bin" / "python"), encoding="utf-8"
+    )
+    monkeypatch.setenv("EXPLAIN_SELECTION_HOME", str(home))
+    monkeypatch.delenv("EXPLAIN_SELECTION_PLUGIN_ROOT", raising=False)
+    monkeypatch.delenv("CLAUDE_PLUGIN_ROOT", raising=False)
+    return home, plugin
+
+
+def test_build_doctor_deps_takes_the_plugin_root_from_the_shim_when_none_is_exported(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Installed in a venv, the package cannot infer its checkout from __file__; the shim can.
+    home, plugin = _installed_runtime(tmp_path, monkeypatch)
+    deps = build_doctor_deps("other", tmp_path, tmp_path)
+    assert (deps.home, deps.plugin_root, deps.plugin_version) == (home, plugin, "9.9.9")
+
+
+def test_build_doctor_deps_prefers_the_wrapper_export_over_the_shim(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _installed_runtime(tmp_path, monkeypatch)
+    monkeypatch.setenv("EXPLAIN_SELECTION_PLUGIN_ROOT", str(tmp_path / "exported"))
+    deps = build_doctor_deps("other", tmp_path, tmp_path)
+    assert deps.plugin_root == tmp_path / "exported"
 
 
 def test_report_lines_format_and_count_every_status() -> None:

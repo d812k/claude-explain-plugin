@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 
 from explain_selection.domain import UNREADABLE_PLUGIN_VERSION, Check
 from explain_selection.entrypoints.runtime import checkout_root
-from explain_selection.services import DoctorDeps, Platform
+from explain_selection.services import DoctorDeps, Platform, installed_plugin_root
 
 # The plugin's name in .claude-plugin/plugin.json; enabledPlugins keys start with it.
 PLUGIN_NAME: Final[str] = "explain-selection"
@@ -85,12 +85,17 @@ def build_doctor_deps(platform: Platform, user_home: Path, cwd: Path) -> DoctorD
     from explain_selection.entrypoints.settings import load_settings, resolve_plugin_root
 
     environ = dict(os.environ)
-    plugin_root = resolve_plugin_root(environ, checkout_root())
+    files = LocalFileInspector()
+    # The home never depends on the plugin root, so find it first: when no wrapper exported
+    # the root, the shim the installer wrote there is the record of it; ``checkout_root()``
+    # is only right when running from a source checkout, not from the runtime venv.
+    home = load_settings(environ, checkout_root()).home
+    plugin_root = resolve_plugin_root(environ, installed_plugin_root(files, home, checkout_root()))
     settings = load_settings(environ, plugin_root)
     runner = SubprocessRunner()
     services_dir = user_home / "Library" / "Services"
     return DoctorDeps(
-        files=LocalFileInspector(),
+        files=files,
         sessions=AgentsCli(runner),
         registry=RegistryFiles(settings.sessions_dir),
         process=OsProcessProbe(),

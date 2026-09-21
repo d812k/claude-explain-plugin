@@ -14,6 +14,7 @@ from explain_selection.services import (
     ClaudeSettingsFacts,
     DoctorDeps,
     gather_facts,
+    installed_plugin_root,
     run_doctor,
     shim_content,
 )
@@ -103,6 +104,16 @@ def test_the_shim_plugin_root_is_parsed_from_the_shim_and_the_template_is_inspec
     assert (runtime.template_present, runtime.template_has_placeholder) == (True, False)
     files.texts[SHIM_PATH] = "#!/bin/sh\nexec something\n"
     assert gather_facts(_deps(files=files)).runtime.shim_plugin_root is None
+
+
+def test_installed_plugin_root_is_the_shim_record_else_the_fallback() -> None:
+    fallback = Path("/site-packages/guess")
+    files = _healthy_files()
+    assert installed_plugin_root(files, HOME, fallback) == PLUGIN_ROOT
+    files.texts[SHIM_PATH] = "#!/bin/sh\nexec something\n"
+    assert installed_plugin_root(files, HOME, fallback) == fallback
+    del files.texts[SHIM_PATH]
+    assert installed_plugin_root(files, HOME, fallback) == fallback
 
 
 def test_live_sessions_become_session_facts_with_the_registered_socket_inspected() -> None:
