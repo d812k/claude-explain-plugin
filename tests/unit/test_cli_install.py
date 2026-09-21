@@ -1,6 +1,7 @@
 """The ``install`` subcommand, driven through ``run`` with in-memory fakes."""
 
 import io
+import shlex
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
@@ -159,11 +160,12 @@ def test_the_shim_is_written_executable_with_the_venv_python_and_plugin_root(
     content, mode = files.written[context.home / "capture"]
     assert mode == 0o700
     assert content == shim_content(context.plugin_root, context.venv_python)
+    root, python = shlex.quote(str(context.plugin_root)), shlex.quote(str(context.venv_python))
     assert content.splitlines() == [
         "#!/bin/sh",
-        f'EXPLAIN_SELECTION_PLUGIN_ROOT="{context.plugin_root}"',
+        f"EXPLAIN_SELECTION_PLUGIN_ROOT={root}",
         "export EXPLAIN_SELECTION_PLUGIN_ROOT",
-        f'exec "{context.venv_python}" -m explain_selection.entrypoints.capture "$@"',
+        f'exec {python} -m explain_selection.entrypoints.capture "$@"',
     ]
 
 

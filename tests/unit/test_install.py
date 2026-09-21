@@ -1,5 +1,6 @@
 """The install use case: lay out the runtime home; on macOS register the Services entry."""
 
+import shlex
 from pathlib import Path
 
 from explain_selection.entrypoints.settings import ENV_PREFIX, Settings
@@ -92,10 +93,27 @@ def test_the_shim_execs_the_venv_python_with_the_plugin_root_exported() -> None:
     assert content == shim_content(ROOT, PYTHON)
     assert content.splitlines() == [
         "#!/bin/sh",
-        f'EXPLAIN_SELECTION_PLUGIN_ROOT="{ROOT}"',
+        f"EXPLAIN_SELECTION_PLUGIN_ROOT={ROOT}",
         "export EXPLAIN_SELECTION_PLUGIN_ROOT",
-        f'exec "{PYTHON}" -m explain_selection.entrypoints.capture "$@"',
+        f'exec {PYTHON} -m explain_selection.entrypoints.capture "$@"',
     ]
+
+
+def test_the_shim_quotes_paths_with_spaces_and_dollar_signs_for_the_shell() -> None:
+    root = Path("/Users/me/My Plugins/$HOME/explain-selection")
+    python = Path("/Users/me/My Home/venv/bin/python")
+    lines = shim_content(root, python).splitlines()
+    assert (
+        lines[1] == "EXPLAIN_SELECTION_PLUGIN_ROOT='/Users/me/My Plugins/$HOME/explain-selection'"
+    )
+    assert lines[3] == (
+        "exec '/Users/me/My Home/venv/bin/python' -m explain_selection.entrypoints.capture \"$@\""
+    )
+    # The shell sees the path as one word, unexpanded.
+    assert shlex.split(lines[1]) == [
+        "EXPLAIN_SELECTION_PLUGIN_ROOT=/Users/me/My Plugins/$HOME/explain-selection"
+    ]
+    assert shlex.split(lines[3])[1] == str(python)
 
 
 def test_existing_config_and_prompt_are_kept_but_the_shim_is_rewritten() -> None:

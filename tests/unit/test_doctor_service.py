@@ -117,6 +117,18 @@ def test_the_shim_plugin_root_is_parsed_from_the_shim_and_the_template_is_inspec
     assert gather_facts(_deps(files=files)).runtime.shim_plugin_root is None
 
 
+def test_a_quoted_shim_root_with_a_space_and_a_dollar_sign_is_read_back_verbatim() -> None:
+    files = _healthy_files()
+    files.texts[SHIM_PATH] = shim_content(Path("/my plugins/$HOME/explain-selection"), PYTHON)
+    assert gather_facts(_deps(files=files)).runtime.shim_plugin_root == (
+        "/my plugins/$HOME/explain-selection"
+    )
+    files.texts[SHIM_PATH] = "#!/bin/sh\nEXPLAIN_SELECTION_PLUGIN_ROOT='unterminated\n"
+    assert gather_facts(_deps(files=files)).runtime.shim_plugin_root is None
+    files.texts[SHIM_PATH] = "#!/bin/sh\nEXPLAIN_SELECTION_PLUGIN_ROOT=\n"
+    assert gather_facts(_deps(files=files)).runtime.shim_plugin_root is None
+
+
 def test_a_shim_or_template_that_exists_but_yields_no_text_is_marked_unreadable() -> None:
     files = _healthy_files()
     del files.texts[SHIM_PATH]

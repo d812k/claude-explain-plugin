@@ -5,6 +5,7 @@ it did; a failing step is recorded and the remaining steps still run, so one rep
 user everything that needs attention. With ``dry_run`` nothing is touched.
 """
 
+import shlex
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -126,12 +127,15 @@ def config_content(home: Path) -> str:
 
 
 def shim_content(plugin_root: Path, venv_python: Path) -> str:
-    """The capture shim: export the plugin root and exec the venv's Python entrypoint."""
+    """The capture shim: export the plugin root and exec the venv's Python entrypoint.
+
+    Both paths are shell-quoted, so spaces and ``$`` in them survive ``sh`` verbatim.
+    """
     return (
         "#!/bin/sh\n"
-        f'EXPLAIN_SELECTION_PLUGIN_ROOT="{plugin_root}"\n'
+        f"EXPLAIN_SELECTION_PLUGIN_ROOT={shlex.quote(str(plugin_root))}\n"
         "export EXPLAIN_SELECTION_PLUGIN_ROOT\n"
-        f'exec "{venv_python}" -m explain_selection.entrypoints.capture "$@"\n'
+        f'exec {shlex.quote(str(venv_python))} -m explain_selection.entrypoints.capture "$@"\n'
     )
 
 

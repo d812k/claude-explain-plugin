@@ -5,6 +5,7 @@ doctor run leaves the registry and the runtime home exactly as it found them. Th
 come from the pure :func:`explain_selection.domain.evaluate`.
 """
 
+import shlex
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Final
@@ -133,8 +134,17 @@ def _shim_plugin_root(text: str | None) -> str | None:
         return None
     for line in text.splitlines():
         if line.startswith(_SHIM_ROOT_PREFIX):
-            return line.removeprefix(_SHIM_ROOT_PREFIX).strip().strip('"')
+            return _shell_word(line.removeprefix(_SHIM_ROOT_PREFIX))
     return None
+
+
+def _shell_word(quoted: str) -> str | None:
+    """The single word ``sh`` would assign from ``quoted``; ``None`` if it is not one word."""
+    try:
+        words = shlex.split(quoted)
+    except ValueError:
+        return None
+    return words[0] if len(words) == 1 else None
 
 
 def _claude_facts(deps: DoctorDeps) -> ClaudeFacts:
