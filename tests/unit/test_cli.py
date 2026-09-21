@@ -6,7 +6,7 @@ from collections.abc import Callable, Sequence
 import pytest
 
 from explain_selection.domain import Pid, SessionKind, SessionStatus
-from explain_selection.entrypoints.cli import package_version, run
+from explain_selection.entrypoints.cli import format_sessions, package_version, run
 from explain_selection.services import SendDeps
 from tests.builders import entry, session
 from tests.fakes import FakePoster, FakeProbe, FakeRegistry, FakeSessions
@@ -93,6 +93,10 @@ def test_sessions_shows_background_sessions_in_the_kind_column() -> None:
     code, out, err = _run(["sessions"], _deps(sessions=background))
     assert (code, err) == (0, "")
     assert out.splitlines() == ["30  idle  background  unregistered  jobs  /jobs"]
+
+
+def test_formatting_no_sessions_gives_no_lines() -> None:
+    assert format_sessions(()) == []
 
 
 def test_sessions_with_no_live_session_says_so_on_stderr() -> None:

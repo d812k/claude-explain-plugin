@@ -127,7 +127,10 @@ def _build_deps() -> SendDeps:
 
 
 def format_sessions(summaries: Sequence[SessionSummary]) -> list[str]:
-    """``pid  status  kind  registered|unregistered  label  cwd``, all but ``cwd`` aligned."""
+    """``pid  status  kind  registered|unregistered  label  cwd``, all but ``cwd`` aligned.
+
+    No sessions give no lines.
+    """
     rows = [
         (
             str(s.pid),
@@ -139,7 +142,7 @@ def format_sessions(summaries: Sequence[SessionSummary]) -> list[str]:
         )
         for s in summaries
     ]
-    widths = [max(len(row[i]) for row in rows) for i in range(_ALIGNED_COLUMNS)]
+    widths = [max((len(row[i]) for row in rows), default=0) for i in range(_ALIGNED_COLUMNS)]
     return [
         "  ".join(
             [
