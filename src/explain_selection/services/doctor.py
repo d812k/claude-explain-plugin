@@ -5,7 +5,7 @@ doctor run leaves the registry and the runtime home exactly as it found them. Th
 come from the pure :func:`explain_selection.domain.evaluate`.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Final
 
@@ -14,6 +14,7 @@ from explain_selection.domain import (
     Check,
     ClaudeFacts,
     DoctorFacts,
+    FileFacts,
     LiveSession,
     MacFacts,
     RegistryEntry,
@@ -78,21 +79,30 @@ def _runtime_facts(deps: DoctorDeps) -> RuntimeFacts:
     files = deps.files
     python = deps.home / VENV_PYTHON
     python_facts = files.inspect(python)
-    shim = deps.home / SHIM_FILE
-    template = files.read_text(deps.template_path)
+    shim, shim_text = _inspect_and_read(files, deps.home / SHIM_FILE)
+    template, template_text = _inspect_and_read(files, deps.template_path)
     return RuntimeFacts(
         home=files.inspect(deps.home),
         venv_python=python_facts,
         installed_version=deps.versions.installed_version(python) if python_facts.exists else None,
         plugin_version=deps.plugin_version,
-        shim=files.inspect(shim),
-        shim_plugin_root=_shim_plugin_root(files.read_text(shim)),
+        shim=shim,
+        shim_plugin_root=_shim_plugin_root(shim_text),
         plugin_root=str(deps.plugin_root),
         config_present=files.inspect(deps.home / CONFIG_FILE).exists,
         template_path=str(deps.template_path),
-        template_present=template is not None,
-        template_has_placeholder=template is not None and TEXT_PLACEHOLDER in template,
+        template=template,
+        template_has_placeholder=template_text is not None and TEXT_PLACEHOLDER in template_text,
     )
+
+
+def _inspect_and_read(files: FileInspector, path: Path) -> tuple[FileFacts, str | None]:
+    """``stat`` and read ``path``; a file that exists but yields no text is marked unreadable."""
+    facts = files.inspect(path)
+    text = files.read_text(path)
+    if facts.exists and text is None:
+        return replace(facts, readable=False), None
+    return facts, text
 
 
 def installed_plugin_root(files: FileInspector, home: Path, fallback: Path) -> Path:

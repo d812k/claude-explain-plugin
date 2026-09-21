@@ -195,11 +195,11 @@ class FileInspector(Protocol):
     """Read-only questions about paths, for the doctor."""
 
     def inspect(self, path: Path) -> FileFacts:
-        """Describe ``path``; a missing path yields ``exists=False`` and ``mode=None``."""
+        """Describe ``path``; missing yields ``exists=False``, unstat-able ``readable=False``."""
         ...
 
     def read_text(self, path: Path) -> str | None:
-        """The file's text, or ``None`` when there is no file at ``path``."""
+        """The file's text, or ``None`` when it is missing or cannot be read as UTF-8 text."""
         ...
 
 

@@ -64,6 +64,7 @@ def _healthy_files() -> FakeFiles:
             PYTHON: SHIM,
             HOME / "capture": SHIM,
             HOME / "config.env": file_facts(),
+            TEMPLATE: file_facts(),
         },
         texts={HOME / "capture": shim_content(PLUGIN_ROOT, PYTHON), TEMPLATE: "Explain {text}"},
     )

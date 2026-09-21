@@ -36,6 +36,7 @@ def file_facts(draw: st.DrawFn) -> FileFacts:
         is_dir=exists and draw(st.booleans()),
         is_socket=exists and draw(st.booleans()),
         is_executable=exists and draw(st.booleans()),
+        readable=exists and draw(st.booleans()),
     )
 
 
@@ -51,7 +52,7 @@ def runtime_facts(draw: st.DrawFn) -> RuntimeFacts:
         plugin_root=draw(roots),
         config_present=draw(st.booleans()),
         template_path=draw(template_paths),
-        template_present=draw(st.booleans()),
+        template=draw(file_facts()),
         template_has_placeholder=draw(st.booleans()),
     )
 

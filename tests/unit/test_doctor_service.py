@@ -40,7 +40,13 @@ NOW = 1_700_000_600_000
 
 def _healthy_files() -> FakeFiles:
     return FakeFiles(
-        facts={HOME: PRIVATE_DIR, PYTHON: SHIM, SHIM_PATH: SHIM, HOME / "config.env": file_facts()},
+        facts={
+            HOME: PRIVATE_DIR,
+            PYTHON: SHIM,
+            SHIM_PATH: SHIM,
+            HOME / "config.env": file_facts(),
+            TEMPLATE: file_facts(),
+        },
         texts={SHIM_PATH: shim_content(PLUGIN_ROOT, PYTHON), TEMPLATE: "Explain:\n{text}\n"},
     )
 
@@ -80,7 +86,8 @@ def test_a_healthy_home_yields_healthy_runtime_facts() -> None:
     assert (runtime.shim_plugin_root, runtime.plugin_root) == (str(PLUGIN_ROOT), str(PLUGIN_ROOT))
     assert runtime.config_present
     assert runtime.template_path == str(TEMPLATE)
-    assert (runtime.template_present, runtime.template_has_placeholder) == (True, True)
+    assert runtime.template == file_facts()
+    assert runtime.template_has_placeholder
     assert versions.asked == [PYTHON]
 
 
@@ -93,7 +100,7 @@ def test_an_empty_home_yields_missing_facts_and_never_probes_the_version() -> No
     assert versions.asked == []
     assert runtime.shim_plugin_root is None
     assert not runtime.config_present
-    assert (runtime.template_present, runtime.template_has_placeholder) == (False, False)
+    assert (runtime.template.exists, runtime.template_has_placeholder) == (False, False)
 
 
 def test_the_shim_plugin_root_is_parsed_from_the_shim_and_the_template_is_inspected() -> None:
@@ -102,9 +109,21 @@ def test_the_shim_plugin_root_is_parsed_from_the_shim_and_the_template_is_inspec
     files.texts[TEMPLATE] = "no placeholder here"
     runtime = gather_facts(_deps(files=files)).runtime
     assert runtime.shim_plugin_root == "/moved"
-    assert (runtime.template_present, runtime.template_has_placeholder) == (True, False)
+    assert (runtime.template.readable, runtime.template_has_placeholder) == (True, False)
     files.texts[SHIM_PATH] = "#!/bin/sh\nexec something\n"
     assert gather_facts(_deps(files=files)).runtime.shim_plugin_root is None
+
+
+def test_a_shim_or_template_that_exists_but_yields_no_text_is_marked_unreadable() -> None:
+    files = _healthy_files()
+    del files.texts[SHIM_PATH]
+    del files.texts[TEMPLATE]
+    runtime = gather_facts(_deps(files=files)).runtime
+    assert (runtime.shim.exists, runtime.shim.readable) == (True, False)
+    assert runtime.shim.is_executable
+    assert runtime.shim_plugin_root is None
+    assert (runtime.template.exists, runtime.template.readable) == (True, False)
+    assert not runtime.template_has_placeholder
 
 
 def test_installed_plugin_root_is_the_shim_record_else_the_fallback() -> None:

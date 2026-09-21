@@ -22,7 +22,9 @@ from explain_selection.errors import (
 )
 from explain_selection.services import ClaudeSettingsFacts, InboxAddress
 
-MISSING = FileFacts(exists=False, mode=None, is_dir=False, is_socket=False, is_executable=False)
+MISSING = FileFacts(
+    exists=False, mode=None, is_dir=False, is_socket=False, is_executable=False, readable=False
+)
 
 
 @dataclass(slots=True)

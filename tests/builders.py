@@ -68,23 +68,27 @@ def entry(
 
 def file_facts(
     *,
-    exists: bool = True,
     mode: int | None = 0o600,
     is_dir: bool = False,
     is_socket: bool = False,
     is_executable: bool = False,
+    readable: bool = True,
 ) -> FileFacts:
-    """What the doctor learns about one path; a plain regular file by default."""
+    """What the doctor learns about one existing path; a readable regular file by default."""
     return FileFacts(
-        exists=exists,
-        mode=mode if exists else None,
+        exists=True,
+        mode=mode,
         is_dir=is_dir,
         is_socket=is_socket,
         is_executable=is_executable,
+        readable=readable,
     )
 
 
-MISSING_FILE = file_facts(exists=False)
+MISSING_FILE = FileFacts(
+    exists=False, mode=None, is_dir=False, is_socket=False, is_executable=False, readable=False
+)
+UNREADABLE_FILE = file_facts(mode=None, readable=False)
 PRIVATE_DIR = file_facts(mode=0o700, is_dir=True)
 PRIVATE_SOCKET = file_facts(mode=0o600, is_socket=True)
 SHIM = file_facts(mode=0o700, is_executable=True)
@@ -100,7 +104,7 @@ HEALTHY_RUNTIME = RuntimeFacts(
     plugin_root=PLUGIN_ROOT,
     config_present=True,
     template_path=TEMPLATE_PATH,
-    template_present=True,
+    template=file_facts(),
     template_has_placeholder=True,
 )
 

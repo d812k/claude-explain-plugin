@@ -14,13 +14,18 @@ type InboundPolicy = Literal["accept", "hold", "refuse"]
 
 @dataclass(frozen=True, slots=True)
 class FileFacts:
-    """What ``stat`` says about one path; ``mode`` holds the permission bits only."""
+    """What ``stat`` says about one path; ``mode`` holds the permission bits only.
+
+    ``readable`` is ``False`` when the path is missing, or exists but could not be stat'ed
+    or read; the other facts are then unknown and left at their defaults.
+    """
 
     exists: bool
     mode: int | None
     is_dir: bool
     is_socket: bool
     is_executable: bool
+    readable: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,7 +41,7 @@ class RuntimeFacts:
     plugin_root: str
     config_present: bool
     template_path: str
-    template_present: bool
+    template: FileFacts
     template_has_placeholder: bool
 
 

@@ -3,7 +3,11 @@
 from explain_selection.adapters.agents_cli import AgentsCli
 from explain_selection.adapters.claude_settings import JsonClaudeSettingsReader
 from explain_selection.adapters.clock import SystemClock
-from explain_selection.adapters.file_inspector import MISSING_FILE, LocalFileInspector
+from explain_selection.adapters.file_inspector import (
+    MISSING_FILE,
+    UNREADABLE_FILE,
+    LocalFileInspector,
+)
 from explain_selection.adapters.focus import PaneLookup, TmuxAwareFocus
 from explain_selection.adapters.hook_input import HookStdin, parse_hook_stdin
 from explain_selection.adapters.inbox_socket import (
@@ -37,6 +41,7 @@ __all__ = [
     "DISTRIBUTION",
     "MISSING_FILE",
     "PBS",
+    "UNREADABLE_FILE",
     "AgentsCli",
     "CommandResult",
     "CommandRunner",

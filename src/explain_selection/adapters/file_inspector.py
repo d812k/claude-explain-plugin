@@ -9,7 +9,10 @@ from typing import Final
 from explain_selection.domain import FileFacts
 
 MISSING_FILE: Final[FileFacts] = FileFacts(
-    exists=False, mode=None, is_dir=False, is_socket=False, is_executable=False
+    exists=False, mode=None, is_dir=False, is_socket=False, is_executable=False, readable=False
+)
+UNREADABLE_FILE: Final[FileFacts] = FileFacts(
+    exists=True, mode=None, is_dir=False, is_socket=False, is_executable=False, readable=False
 )
 
 
@@ -22,6 +25,8 @@ class LocalFileInspector:
             result = os.stat(path)
         except (FileNotFoundError, NotADirectoryError):
             return MISSING_FILE
+        except PermissionError:
+            return UNREADABLE_FILE
         mode = result.st_mode
         return FileFacts(
             exists=True,
@@ -29,13 +34,20 @@ class LocalFileInspector:
             is_dir=stat.S_ISDIR(mode),
             is_socket=stat.S_ISSOCK(mode),
             is_executable=bool(mode & stat.S_IXUSR),
+            readable=True,
         )
 
     def read_text(self, path: Path) -> str | None:
         try:
             return path.read_text(encoding="utf-8")
-        except FileNotFoundError:
+        except (
+            FileNotFoundError,
+            NotADirectoryError,
+            IsADirectoryError,
+            PermissionError,
+            UnicodeDecodeError,
+        ):
             return None
 
 
-__all__ = ["MISSING_FILE", "LocalFileInspector"]
+__all__ = ["MISSING_FILE", "UNREADABLE_FILE", "LocalFileInspector"]

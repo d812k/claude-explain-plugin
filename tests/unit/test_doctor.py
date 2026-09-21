@@ -2,6 +2,8 @@
 
 from dataclasses import replace
 
+import pytest
+
 from explain_selection.domain import (
     UNREADABLE_PLUGIN_VERSION,
     Check,
@@ -20,6 +22,7 @@ from tests.builders import (
     MISSING_FILE,
     PLUGIN_ROOT,
     TEMPLATE_PATH,
+    UNREADABLE_FILE,
     claude_facts,
     doctor_facts,
     file_facts,
@@ -140,8 +143,42 @@ def test_a_missing_config_only_warns() -> None:
     assert checks_ok(evaluate(doctor_facts(runtime=runtime)))
 
 
+@pytest.mark.parametrize(
+    ("name", "field", "what", "path"),
+    [
+        ("home", "home", "home", "<home>"),
+        ("venv", "venv_python", "venv/bin/python", "<home>/venv/bin/python"),
+        ("shim", "shim", "capture", "<home>/capture"),
+        ("template", "template", "prompt template", TEMPLATE_PATH),
+    ],
+)
+def test_a_runtime_file_that_exists_but_cannot_be_read_fails_with_a_permissions_fix(
+    name: str, field: str, what: str, path: str
+) -> None:
+    check = _runtime_check(name, replace(HEALTHY_RUNTIME, **{field: UNREADABLE_FILE}))
+    assert (check.status, check.detail) == ("fail", f"{what} exists but cannot be read")
+    assert check.fix == f"check ownership and permissions of {path}"
+
+
+def test_an_unreadable_socket_or_bundle_fails_with_a_permissions_fix() -> None:
+    socket = _session_check(session_facts(11, socket=UNREADABLE_FILE))
+    assert (socket.status, socket.fix) == (
+        "fail",
+        "check ownership and permissions of the inbox socket",
+    )
+    assert "socket unreadable" in socket.detail
+    bundle = _mac_check("services-bundle", mac_facts(bundle=UNREADABLE_FILE))
+    assert (bundle.status, bundle.detail) == (
+        "fail",
+        "Explain selection.workflow exists but cannot be read",
+    )
+    assert bundle.fix == (
+        "check ownership and permissions of ~/Library/Services/Explain selection.workflow"
+    )
+
+
 def test_the_template_must_exist_and_contain_the_placeholder() -> None:
-    absent = _runtime_check("template", replace(HEALTHY_RUNTIME, template_present=False))
+    absent = _runtime_check("template", replace(HEALTHY_RUNTIME, template=MISSING_FILE))
     assert (absent.status, absent.fix) == ("fail", INSTALL_FIX)
     assert TEMPLATE_PATH in absent.detail
     no_slot = _runtime_check("template", replace(HEALTHY_RUNTIME, template_has_placeholder=False))

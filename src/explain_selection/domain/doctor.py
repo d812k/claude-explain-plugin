@@ -31,6 +31,7 @@ _MS_PER_MINUTE: Final[int] = 60_000
 _SHORTCUT_FIX: Final[str] = (
     f"System Settings > Keyboard > Keyboard Shortcuts > Services > Text > {_SERVICE_NAME}"
 )
+_PERMISSIONS_FIX: Final[str] = "check ownership and permissions of"
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,10 +84,16 @@ def _skip(name: str) -> Check:
     return Check(name=name, status="skip", detail=MACOS_ONLY, fix=None)
 
 
+def _unreadable(name: str, what: str, path: str) -> Check:
+    return _fail(name, f"{what} exists but cannot be read", f"{_PERMISSIONS_FIX} {path}")
+
+
 def _home(runtime: RuntimeFacts) -> Check:
     home = runtime.home
     if not home.exists:
         return _fail("home", "missing", INSTALL_FIX)
+    if not home.readable:
+        return _unreadable("home", "home", "<home>")
     if not home.is_dir:
         return _fail("home", "not a directory", INSTALL_FIX)
     if home.mode != _PRIVATE_DIR_MODE:
@@ -97,6 +104,8 @@ def _home(runtime: RuntimeFacts) -> Check:
 def _venv(runtime: RuntimeFacts) -> Check:
     if not runtime.venv_python.exists:
         return _fail("venv", "venv/bin/python missing", INSTALL_FIX)
+    if not runtime.venv_python.readable:
+        return _unreadable("venv", "venv/bin/python", "<home>/venv/bin/python")
     return _ok("venv", "venv/bin/python present")
 
 
@@ -117,6 +126,8 @@ def _shim(runtime: RuntimeFacts) -> Check:
     shim = runtime.shim
     if not shim.exists:
         return _fail("shim", "capture missing", INSTALL_FIX)
+    if not shim.readable:
+        return _unreadable("shim", "capture", "<home>/capture")
     if not shim.is_executable:
         return _fail("shim", "capture is not executable", INSTALL_FIX)
     if runtime.shim_plugin_root is None:
@@ -137,8 +148,10 @@ def _config(runtime: RuntimeFacts) -> Check:
 
 def _template(runtime: RuntimeFacts) -> Check:
     path = runtime.template_path
-    if not runtime.template_present:
+    if not runtime.template.exists:
         return _fail("template", f"prompt template missing at {path}", INSTALL_FIX)
+    if not runtime.template.readable:
+        return _unreadable("template", "prompt template", path)
     if not runtime.template_has_placeholder:
         fix = f"add {{text}} to {path}, or delete the file and rerun /explain-selection:install"
         return _fail("template", f"{path} has no {{text}} placeholder", fix)
@@ -171,6 +184,8 @@ def _session(session: SessionFacts) -> Check:
             return _warn(name, detail, fix)
         return _ok(name, detail)
     socket = session.socket
+    if socket is not None and socket.exists and not socket.readable:
+        return _fail(name, detail, f"{_PERMISSIONS_FIX} the inbox socket")
     if socket is None or not _socket_ok(socket):
         return _fail(name, detail, "the session's inbox socket is gone; restart it")
     if socket.mode is not None and socket.mode & _OTHER_USER_BITS:
@@ -188,9 +203,17 @@ def _session_detail(session: SessionFacts) -> str:
     if session.tmux is not None:
         parts.append(f"tmux {session.tmux}")
     if session.socket is not None:
-        parts.append("socket ok" if _socket_ok(session.socket) else "socket missing")
+        parts.append(_socket_word(session.socket))
     parts.append(f"up {session.age_ms // _MS_PER_MINUTE}m")
     return " ".join(parts)
+
+
+def _socket_word(socket: FileFacts) -> str:
+    if _socket_ok(socket):
+        return "socket ok"
+    if socket.exists and not socket.readable:
+        return "socket unreadable"
+    return "socket missing"
 
 
 def _socket_ok(socket: FileFacts) -> bool:
@@ -226,9 +249,12 @@ def _mac(mac: MacFacts | None) -> tuple[Check, Check, Check]:
 
 
 def _bundle(mac: MacFacts) -> Check:
+    bundle = f"{_SERVICE_NAME}.workflow"
     if not mac.bundle.exists:
-        return _fail("services-bundle", f"{_SERVICE_NAME}.workflow missing", INSTALL_FIX)
-    return _ok("services-bundle", f"{_SERVICE_NAME}.workflow installed")
+        return _fail("services-bundle", f"{bundle} missing", INSTALL_FIX)
+    if not mac.bundle.readable:
+        return _unreadable("services-bundle", bundle, f"~/Library/Services/{bundle}")
+    return _ok("services-bundle", f"{bundle} installed")
 
 
 def _shortcut(mac: MacFacts) -> Check:

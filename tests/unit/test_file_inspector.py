@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from explain_selection.adapters import MISSING_FILE, LocalFileInspector
+from explain_selection.adapters import MISSING_FILE, UNREADABLE_FILE, LocalFileInspector
 from explain_selection.domain import FileFacts
 
 
@@ -22,7 +22,7 @@ def test_a_regular_file_reports_its_permission_bits_only(tmp_path: Path) -> None
     target.write_text("x", encoding="utf-8")
     target.chmod(0o640)
     assert LocalFileInspector().inspect(target) == FileFacts(
-        exists=True, mode=0o640, is_dir=False, is_socket=False, is_executable=False
+        exists=True, mode=0o640, is_dir=False, is_socket=False, is_executable=False, readable=True
     )
 
 
@@ -34,10 +34,10 @@ def test_a_directory_and_an_executable_are_recognised(tmp_path: Path) -> None:
     shim.chmod(0o700)
     inspector = LocalFileInspector()
     assert inspector.inspect(home) == FileFacts(
-        exists=True, mode=0o700, is_dir=True, is_socket=False, is_executable=True
+        exists=True, mode=0o700, is_dir=True, is_socket=False, is_executable=True, readable=True
     )
     assert inspector.inspect(shim) == FileFacts(
-        exists=True, mode=0o700, is_dir=False, is_socket=False, is_executable=True
+        exists=True, mode=0o700, is_dir=False, is_socket=False, is_executable=True, readable=True
     )
 
 
@@ -48,9 +48,25 @@ def test_read_text_returns_the_content_or_none_for_a_missing_file(tmp_path: Path
     assert inspector.read_text(tmp_path / "absent.txt") is None
 
 
-def test_read_text_does_not_hide_other_errors(tmp_path: Path) -> None:
-    with pytest.raises(IsADirectoryError):
-        LocalFileInspector().read_text(tmp_path)
+def test_a_directory_where_a_file_is_expected_inspects_but_does_not_read(tmp_path: Path) -> None:
+    (tmp_path / "capture").mkdir()
+    inspector = LocalFileInspector()
+    facts = inspector.inspect(tmp_path / "capture")
+    assert (facts.exists, facts.is_dir, facts.readable) == (True, True, True)
+    assert inspector.read_text(tmp_path / "capture") is None
+
+
+def test_read_text_yields_none_for_bytes_that_are_not_utf8(tmp_path: Path) -> None:
+    (tmp_path / "prompt.txt").write_bytes(b"Explain \xff\xfe {text}")
+    assert LocalFileInspector().read_text(tmp_path / "prompt.txt") is None
+
+
+def test_the_unreadable_marker_exists_without_any_stat_facts() -> None:
+    expected = FileFacts(
+        exists=True, mode=None, is_dir=False, is_socket=False, is_executable=False, readable=False
+    )
+    assert expected == UNREADABLE_FILE
+    assert not MISSING_FILE.readable
 
 
 @pytest.mark.slow
