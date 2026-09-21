@@ -6,6 +6,7 @@ from pathlib import Path
 
 from explain_selection.adapters import CommandResult
 from explain_selection.domain import (
+    FileFacts,
     Focus,
     LiveSession,
     Pid,
@@ -19,7 +20,9 @@ from explain_selection.errors import (
     InstallError,
     SubprocessError,
 )
-from explain_selection.services import InboxAddress
+from explain_selection.services import ClaudeSettingsFacts, InboxAddress
+
+MISSING = FileFacts(exists=False, mode=None, is_dir=False, is_socket=False, is_executable=False)
 
 
 @dataclass(slots=True)
@@ -280,3 +283,61 @@ class FakeRegistrar:
 
     def read_status(self) -> str:
         return self.status
+
+
+@dataclass(slots=True)
+class FakeFiles:
+    """A read-only file inspector over two tables; a path in neither does not exist."""
+
+    facts: dict[Path, FileFacts] = field(default_factory=dict[Path, FileFacts])
+    texts: dict[Path, str] = field(default_factory=dict[Path, str])
+    inspected: list[Path] = field(default_factory=list[Path])
+
+    def inspect(self, path: Path) -> FileFacts:
+        self.inspected.append(path)
+        return self.facts.get(path, MISSING)
+
+    def read_text(self, path: Path) -> str | None:
+        return self.texts.get(path)
+
+
+@dataclass(slots=True)
+class FakeVersions:
+    """Answers a fixed installed version; records which interpreters it was asked about."""
+
+    version: str | None = "0.1.0"
+    asked: list[Path] = field(default_factory=list[Path])
+
+    def installed_version(self, python: Path) -> str | None:
+        self.asked.append(python)
+        return self.version
+
+
+@dataclass(slots=True)
+class FakeClaudeSettings:
+    """Returns fixed Claude Code settings facts."""
+
+    facts: ClaudeSettingsFacts = field(
+        default_factory=lambda: ClaudeSettingsFacts(cross_session_inbound=None, plugin_enabled=True)
+    )
+
+    def read(self) -> ClaudeSettingsFacts:
+        return self.facts
+
+
+@dataclass(slots=True)
+class FakeMac:
+    """A macOS probe with canned answers."""
+
+    bundle_facts: FileFacts = MISSING
+    status: str | None = None
+    osascript: bool = True
+
+    def bundle(self) -> FileFacts:
+        return self.bundle_facts
+
+    def shortcut_status(self) -> str | None:
+        return self.status
+
+    def osascript_found(self) -> bool:
+        return self.osascript

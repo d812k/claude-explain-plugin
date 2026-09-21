@@ -9,7 +9,9 @@ from pathlib import Path
 from typing import Protocol
 
 from explain_selection.domain import (
+    FileFacts,
     Focus,
+    InboundPolicy,
     InboxToken,
     LiveSession,
     Pid,
@@ -181,14 +183,70 @@ class ServicesRegistrar(Protocol):
         ...
 
 
+@dataclass(frozen=True, slots=True)
+class ClaudeSettingsFacts:
+    """What the doctor reads from Claude Code's ``settings.json`` files."""
+
+    cross_session_inbound: InboundPolicy | None
+    plugin_enabled: bool
+
+
+class FileInspector(Protocol):
+    """Read-only questions about paths, for the doctor."""
+
+    def inspect(self, path: Path) -> FileFacts:
+        """Describe ``path``; a missing path yields ``exists=False`` and ``mode=None``."""
+        ...
+
+    def read_text(self, path: Path) -> str | None:
+        """The file's text, or ``None`` when there is no file at ``path``."""
+        ...
+
+
+class VersionProbe(Protocol):
+    """Asks an interpreter which version of this package it has installed."""
+
+    def installed_version(self, python: Path) -> str | None:
+        """The distribution version under ``python``, or ``None`` if it cannot be read."""
+        ...
+
+
+class ClaudeSettingsReader(Protocol):
+    """Reads the Claude Code settings the doctor cares about."""
+
+    def read(self) -> ClaudeSettingsFacts:
+        """Merge the settings files; missing or invalid files count as unset."""
+        ...
+
+
+class MacProbe(Protocol):
+    """The macOS-only facts: Services bundle, shortcut status and ``osascript``."""
+
+    def bundle(self) -> FileFacts:
+        """Describe the installed ``Explain selection.workflow`` bundle."""
+        ...
+
+    def shortcut_status(self) -> str | None:
+        """The Services status as ``defaults`` reports it, or ``None`` if it cannot be read."""
+        ...
+
+    def osascript_found(self) -> bool:
+        """``True`` when ``osascript`` is on ``PATH``."""
+        ...
+
+
 __all__ = [
     "Chooser",
+    "ClaudeSettingsFacts",
+    "ClaudeSettingsReader",
     "Clock",
+    "FileInspector",
     "FocusProbe",
     "InboxAddress",
     "InboxPoster",
     "InstallFiles",
     "LinkOpener",
+    "MacProbe",
     "Notifier",
     "ProcessProbe",
     "RegistryStore",
@@ -197,4 +255,5 @@ __all__ = [
     "TargetMemory",
     "TempFileWriter",
     "TtyLookup",
+    "VersionProbe",
 ]
